@@ -17,7 +17,7 @@ import {
 import { useQueryState } from "nuqs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { LangGraphLogoSVG } from "@/components/icons/langgraph";
+import { LylMark } from "@/components/icons/lyl";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ArrowRight } from "lucide-react";
@@ -25,6 +25,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
+import { type CounselMode } from "@/lib/counsel-mode";
+import { resolveApiUrl, resolveStreamConfig } from "@/lib/stream-config";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -34,8 +36,8 @@ const useTypedStream = useStream<
     UpdateType: {
       messages?: Message[] | Message | string;
       ui?: (UIMessage | RemoveUIMessage)[] | UIMessage | RemoveUIMessage;
-      context?: Record<string, unknown>;
     };
+    ConfigurableType: Record<string, unknown> & { mode: CounselMode };
     CustomEventType: UIMessage | RemoveUIMessage;
   }
 >;
@@ -113,11 +115,10 @@ const StreamSession = ({
   useEffect(() => {
     checkGraphStatus(apiUrl, apiKey, authScheme).then((ok) => {
       if (!ok) {
-        toast.error("Failed to connect to LangGraph server", {
+        toast.error("无法连接参谋服务", {
           description: () => (
             <p>
-              Please ensure your graph is running at <code>{apiUrl}</code> and
-              your API key is correctly set (if connecting to a deployed graph).
+              请确认参谋服务已在 <code>{apiUrl}</code> 启动，并检查服务端配置。
             </p>
           ),
           duration: 10000,
@@ -137,7 +138,7 @@ const StreamSession = ({
 
 // Default values for the form
 const DEFAULT_API_URL = "http://localhost:2024";
-const DEFAULT_ASSISTANT_ID = "agent";
+const DEFAULT_ASSISTANT_ID = "lyl_counsel_agent";
 const AGENT_BUILDER_AUTH_SCHEME = "langsmith-api-key";
 
 export const StreamProvider: React.FC<{ children: ReactNode }> = ({
@@ -176,10 +177,18 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
     _setApiKey(key);
   };
 
-  // Determine final values to use, prioritizing URL params then env vars
-  const finalApiUrl = apiUrl || envApiUrl;
-  const finalAssistantId = assistantId || envAssistantId;
-  const finalAuthScheme = authScheme || envAuthScheme || "";
+  const production = process.env.NODE_ENV === "production";
+  const { apiUrl: finalApiUrl, assistantId: finalAssistantId } =
+    resolveStreamConfig({
+      apiUrl,
+      assistantId,
+      envApiUrl,
+      envAssistantId,
+      production,
+    });
+  const finalAuthScheme = production
+    ? envAuthScheme || ""
+    : authScheme || envAuthScheme || "";
 
   // Show the form if we: don't have an API URL, or don't have an assistant ID
   if (!finalApiUrl || !finalAssistantId) {
@@ -188,14 +197,13 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
         <div className="animate-in fade-in-0 zoom-in-95 bg-background flex max-w-3xl flex-col rounded-lg border shadow-lg">
           <div className="mt-14 flex flex-col gap-2 border-b p-6">
             <div className="flex flex-col items-start gap-2">
-              <LangGraphLogoSVG className="h-7" />
+              <LylMark />
               <h1 className="text-xl font-semibold tracking-tight">
-                Agent Chat
+                刘亚楼参谋台
               </h1>
             </div>
             <p className="text-muted-foreground">
-              Welcome to Agent Chat! Before you get started, you need to enter
-              the URL of the deployment and the assistant / graph ID.
+              配置本地开发使用的参谋服务地址与 Agent ID。
             </p>
           </div>
           <form
@@ -219,11 +227,10 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
           >
             <div className="flex flex-col gap-2">
               <Label htmlFor="apiUrl">
-                Deployment URL<span className="text-rose-500">*</span>
+                服务地址<span className="text-rose-500">*</span>
               </Label>
               <p className="text-muted-foreground text-sm">
-                This is the URL of your LangGraph deployment. Can be a local, or
-                production deployment.
+                本地 LangGraph 服务或开发部署地址。
               </p>
               <Input
                 id="apiUrl"
@@ -236,12 +243,10 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="assistantId">
-                Assistant / Graph ID<span className="text-rose-500">*</span>
+                Agent ID<span className="text-rose-500">*</span>
               </Label>
               <p className="text-muted-foreground text-sm">
-                This is the ID of the graph (can be the graph name), or
-                assistant to fetch threads from, and invoke when actions are
-                taken.
+                用于读取历史会商并发起运行的 Graph 或 Assistant 标识。
               </p>
               <Input
                 id="assistantId"
@@ -253,12 +258,9 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="apiKey">LangSmith API Key</Label>
+              <Label htmlFor="apiKey">开发 API Key</Label>
               <p className="text-muted-foreground text-sm">
-                This is <strong>NOT</strong> required if using a local LangGraph
-                server. This value is stored in your browser's local storage and
-                is only used to authenticate requests sent to your LangGraph
-                server.
+                本地服务不需要。此值仅保存在浏览器本地，用于开发部署鉴权。
               </p>
               <PasswordInput
                 id="apiKey"
@@ -273,10 +275,10 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
               <div className="flex items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                   <Label htmlFor="agentBuilderEnabled">
-                    Built with Agent Builder
+                    Agent Builder 部署
                   </Label>
                   <p className="text-muted-foreground text-sm">
-                    Enable this for Agent Builder deployments.
+                    仅在使用 Agent Builder 部署时开启。
                   </p>
                 </div>
                 <Switch
@@ -292,7 +294,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
                 type="submit"
                 size="lg"
               >
-                Continue
+                进入参谋台
                 <ArrowRight className="size-5" />
               </Button>
             </div>
@@ -302,10 +304,16 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
     );
   }
 
+  const streamApiUrl =
+    resolveApiUrl(
+      finalApiUrl,
+      typeof window === "undefined" ? undefined : window.location.origin,
+    ) ?? finalApiUrl;
+
   return (
     <StreamSession
-      apiKey={apiKey}
-      apiUrl={finalApiUrl}
+      apiKey={production ? null : apiKey}
+      apiUrl={streamApiUrl}
       assistantId={finalAssistantId}
       authScheme={finalAuthScheme || undefined}
     >

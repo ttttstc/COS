@@ -4,7 +4,7 @@ import { Thread } from "@langchain/langgraph-sdk";
 import { useEffect } from "react";
 
 import { getContentString } from "../utils";
-import { useQueryState, parseAsBoolean } from "nuqs";
+import { useQueryState, parseAsBoolean, parseAsStringLiteral } from "nuqs";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +14,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PanelRightOpen, PanelRightClose } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import {
+  getThreadMode,
+  getThreadModeLabel,
+  getThreadStatusLabel,
+  getThreadUpdatedLabel,
+} from "@/lib/thread-summary";
+import { COUNSEL_MODE_VALUES, DEFAULT_COUNSEL_MODE } from "@/lib/counsel-mode";
 
 function ThreadList({
   threads,
@@ -23,6 +30,10 @@ function ThreadList({
   onThreadClick?: (threadId: string) => void;
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
+  const [, setMode] = useQueryState(
+    "mode",
+    parseAsStringLiteral(COUNSEL_MODE_VALUES).withDefault(DEFAULT_COUNSEL_MODE),
+  );
 
   return (
     <div className="flex h-full w-full flex-col items-start justify-start gap-2 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
@@ -45,15 +56,28 @@ function ThreadList({
           >
             <Button
               variant="ghost"
-              className="w-[280px] items-start justify-start text-left font-normal"
+              className="h-auto w-full items-start justify-start px-3 py-2 text-left font-normal"
               onClick={(e) => {
                 e.preventDefault();
                 onThreadClick?.(t.thread_id);
+                setMode(getThreadMode(t));
                 if (t.thread_id === threadId) return;
                 setThreadId(t.thread_id);
               }}
             >
-              <p className="truncate text-ellipsis">{itemText}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-ellipsis">{itemText}</p>
+                <div className="text-muted-foreground mt-1 flex items-center gap-1.5 text-xs">
+                  <span>{getThreadModeLabel(t)}</span>
+                  <span aria-hidden="true">·</span>
+                  <time dateTime={t.updated_at}>
+                    {getThreadUpdatedLabel(t.updated_at)}
+                  </time>
+                  <span className="ml-auto rounded-full bg-slate-100 px-1.5 py-0.5">
+                    {getThreadStatusLabel(t.status)}
+                  </span>
+                </div>
+              </div>
             </Button>
           </div>
         );
@@ -101,6 +125,7 @@ export default function ThreadHistory() {
           <Button
             className="hover:bg-gray-100"
             variant="ghost"
+            aria-label={chatHistoryOpen ? "收起历史会商" : "打开历史会商"}
             onClick={() => setChatHistoryOpen((p) => !p)}
           >
             {chatHistoryOpen ? (
@@ -109,9 +134,7 @@ export default function ThreadHistory() {
               <PanelRightClose className="size-5" />
             )}
           </Button>
-          <h1 className="text-xl font-semibold tracking-tight">
-            Thread History
-          </h1>
+          <h1 className="text-xl font-semibold tracking-tight">历史会商</h1>
         </div>
         {threadsLoading ? (
           <ThreadHistoryLoading />
@@ -132,7 +155,7 @@ export default function ThreadHistory() {
             className="flex lg:hidden"
           >
             <SheetHeader>
-              <SheetTitle>Thread History</SheetTitle>
+              <SheetTitle>历史会商</SheetTitle>
             </SheetHeader>
             <ThreadList
               threads={threads}

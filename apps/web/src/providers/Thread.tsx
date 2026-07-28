@@ -12,6 +12,7 @@ import {
   SetStateAction,
 } from "react";
 import { createClient } from "./client";
+import { resolveApiUrl, resolveStreamConfig } from "@/lib/stream-config";
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
@@ -46,16 +47,28 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
   const [authScheme] = useQueryState("authScheme", {
     defaultValue: envAuthScheme || "",
   });
+  const production = process.env.NODE_ENV === "production";
+  const resolvedConfig = resolveStreamConfig({
+    apiUrl,
+    assistantId,
+    envApiUrl,
+    envAssistantId,
+    production,
+  });
+  const resolvedApiUrl = resolveApiUrl(
+    resolvedConfig.apiUrl,
+    typeof window === "undefined" ? undefined : window.location.origin,
+  );
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
-    const resolvedAssistantId = assistantId || envAssistantId;
-    if (!apiUrl || !resolvedAssistantId) return [];
+    const resolvedAssistantId = resolvedConfig.assistantId;
+    if (!resolvedApiUrl || !resolvedAssistantId) return [];
     const client = createClient(
-      apiUrl,
-      getApiKey() ?? undefined,
-      authScheme || undefined,
+      resolvedApiUrl,
+      production ? undefined : (getApiKey() ?? undefined),
+      production ? envAuthScheme : authScheme || envAuthScheme || undefined,
     );
 
     const threads = await client.threads.search({
@@ -66,7 +79,13 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     });
 
     return threads;
-  }, [apiUrl, assistantId, authScheme, envAssistantId]);
+  }, [
+    authScheme,
+    envAuthScheme,
+    production,
+    resolvedApiUrl,
+    resolvedConfig.assistantId,
+  ]);
 
   const value = {
     getThreads,

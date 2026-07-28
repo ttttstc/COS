@@ -1,0 +1,34 @@
+import {
+  getCounselMode,
+  readCounselMode,
+  type CounselMode,
+} from "@/lib/counsel-mode";
+import type { Thread, ThreadStatus } from "@langchain/langgraph-sdk";
+import { formatDistanceToNow } from "date-fns";
+import { zhCN } from "date-fns/locale";
+
+const STATUS_LABELS: Record<ThreadStatus, string> = {
+  busy: "会商中",
+  interrupted: "待用户裁决",
+  idle: "已形成建议",
+  error: "需要处理",
+};
+
+export function getThreadMode(thread: Thread): CounselMode {
+  return readCounselMode(thread.metadata?.mode);
+}
+
+export function getThreadModeLabel(thread: Thread): string {
+  return getCounselMode(getThreadMode(thread)).shortLabel;
+}
+
+export function getThreadStatusLabel(status: ThreadStatus): string {
+  return STATUS_LABELS[status];
+}
+
+export function getThreadUpdatedLabel(updatedAt: string): string {
+  return formatDistanceToNow(new Date(updatedAt), {
+    addSuffix: true,
+    locale: zhCN,
+  });
+}

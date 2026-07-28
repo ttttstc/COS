@@ -1,8 +1,8 @@
 # COS
 
 COS 是个人战略参谋 Agent「刘亚楼参谋台（LYL）」的产品与技术设计仓库。
-当前代码实现 Issue #2 的工程基线：官方 Agent Chat UI 前端和一个最小本地
-LangGraph `messages` Agent。
+当前代码实现 Issue #3 的产品入口：刘亚楼参谋台品牌、四种主动模式与普通会商，
+底层保留 Agent Chat UI 和最小 LangGraph `messages` Agent。
 
 ## Repository layout
 
@@ -84,17 +84,33 @@ pnpm dev
 Open `http://localhost:3000`. Create a conversation and send a message. The
 stub Agent streams `本地 LangGraph 基线已连接。`
 
+首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入普通会商。
+所选模式随每次消息作为 LangGraph Run Context 发送，并记录到新 Thread metadata。
+
+## Production Web configuration
+
+生产构建不会显示 Deployment URL、Assistant ID 或 API Key 配置表单。Web 默认
+通过同源 `/api` Proxy 连接 Agent；部署时设置服务端变量：
+
+```dotenv
+LANGGRAPH_API_URL=https://your-agent.example.com
+LANGSMITH_API_KEY=replace-on-server
+```
+
+`LANGSMITH_API_KEY` 不得使用 `NEXT_PUBLIC_` 前缀。需要覆盖默认 Agent ID 时设置
+`NEXT_PUBLIC_ASSISTANT_ID`。
+
 ## Model configuration
 
 Agent settings use the `LYL_` environment prefix:
 
-| Variable | Purpose |
-|---|---|
-| `LYL_MODEL_PROVIDER` | LangChain provider name, or `stub` |
-| `LYL_MODEL` | Provider model identifier |
-| `LYL_MODEL_API_KEY` | Secret key; not needed for `stub` |
+| Variable             | Purpose                             |
+| -------------------- | ----------------------------------- |
+| `LYL_MODEL_PROVIDER` | LangChain provider name, or `stub`  |
+| `LYL_MODEL`          | Provider model identifier           |
+| `LYL_MODEL_API_KEY`  | Secret key; not needed for `stub`   |
 | `LYL_MODEL_BASE_URL` | Optional OpenAI-compatible endpoint |
-| `LYL_STUB_RESPONSE` | Local no-key response |
+| `LYL_STUB_RESPONSE`  | Local no-key response               |
 
 Example for an OpenAI model:
 
@@ -163,8 +179,8 @@ at commit `fdc87e65307581b02898d33c62b3f285e56bd85b`.
 
 The upstream MIT license is preserved in `apps/web/LICENSE`; see
 `NOTICE.md` for attribution. Thread history, streaming, stop, file upload,
-Interrupt, and Artifact foundations remain present. Product branding and
-formal counsel behavior are intentionally deferred.
+Interrupt, and Artifact foundations remain present. The Issue #3 product shell adds LYL branding and counsel-mode entry points while keeping
+upstream interaction foundations intact. Formal counsel behavior remains deferred.
 
 ## Product documents
 
