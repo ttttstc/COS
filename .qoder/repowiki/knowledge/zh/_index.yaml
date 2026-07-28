@@ -1,0 +1,33 @@
+# 知识卡导出索引文件
+schema_version: 1
+locale: zh-CN
+branch: codex/issue-4-agent-graph-routing
+nodes_managed: true
+exported_at: "2026-07-28T09:16:31Z"
+modules:
+    "":
+        dir_name: LYL 参谋台 Monorepo 工程基线
+        title: LYL 参谋台 Monorepo 工程基线
+        scope:
+            - README.md
+            - NOTICE.md
+            - .gitignore
+            - package.json
+            - pnpm-lock.yaml
+            - pnpm-workspace.yaml
+            - .env.example
+            - LICENSE
+        source_files: []
+        children:
+            - docs
+        depends_on: []
+        related_to: []
+    docs:
+        dir_name: LYL 参谋台产品需求与技术规格文档
+        title: LYL 参谋台产品需求与技术规格文档
+        scope:
+            - docs/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to: []

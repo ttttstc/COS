@@ -1,0 +1,159 @@
+{
+  "summary": {
+    "projectName": "COS",
+    "locale": "zh-CN",
+    "modelId": "agent-work-loop-v4",
+    "reportContractVersion": 25,
+    "overview": "COS 是刚完成上游导入的 pnpm + uv 双栈 monorepo：README 与 CI 基线质量较好，但验证信号当前被一个未跟踪的红色测试文件污染，且整个 Python agent 子项目对编码代理不可机械路由；本次为 session-limited 审计，会话侧无可复核的任务 Episode。",
+    "aiAgentPractice": {
+      "inspectedSurfaces": [
+        "Workflows"
+      ],
+      "coverageRows": [
+        {
+          "surface": "Workflows",
+          "scopes": [
+            "Project"
+          ],
+          "count": 1,
+          "paths": [
+            ".github/workflows/ci.yml"
+          ]
+        },
+        {
+          "surface": "Memories",
+          "scopes": [
+            "Project"
+          ],
+          "count": 2
+        },
+        {
+          "surface": "Custom Agents",
+          "scopes": [
+            "Project"
+          ],
+          "count": 0
+        }
+      ]
+    },
+    "assignmentSummaries": [],
+    "dimensions": [
+      {
+        "id": "task-understanding",
+        "label": "任务理解",
+        "score": 52,
+        "summary": "README 与 docs/spec 五份规格文档提供了清晰的人读入口，但项目内没有任何 AGENTS.md 或 Rules，根清单只路由 web 子项目，agent 侧约定仅存在于散文文档中，缺少代理可发现的权威上下文路由。",
+        "findingRefs": [
+          "agent-subproject-unroutable"
+        ]
+      },
+      {
+        "id": "controlled-execution",
+        "label": "可控执行",
+        "score": 64,
+        "summary": "启动路线可复现性较好：双端锁文件、.env.example 齐备、stub 模型免密钥可跑、README 声明了持久化与重置边界；但根 pnpm 脚本全部过滤到 web，Python 侧命令无机械入口，且无 doctor/一键 setup 路由。",
+        "findingRefs": []
+      },
+      {
+        "id": "change-validation",
+        "label": "改动验证",
+        "score": 55,
+        "summary": "分层验证路线存在（web lint/typecheck/vitest，agent pytest，另有 smoke 层），跟踪内 pytest 本地实测 5 例通过；但全量 pytest 因一个未跟踪、无实现对应的测试文件实测 9 例失败，文档化验证路径当前对任何操作者给出无法归因的红色信号。",
+        "findingRefs": [
+          "untracked-red-test-pollutes-validation",
+          "agent-side-no-lint-type-gate"
+        ]
+      },
+      {
+        "id": "reliable-delivery",
+        "label": "可靠交付",
+        "score": 58,
+        "summary": "PR 合入与 CI 门禁均有配置且 git 历史可见 PR 合并痕迹，但 CI 只覆盖 README「Validation」宣称面的一部分：next build、smoke 与 format:check 均不在门禁内；CI 实际运行状态未验证（未访问外部 CI）。",
+        "findingRefs": [
+          "ci-narrower-than-declared-validation"
+        ]
+      },
+      {
+        "id": "learning-capture",
+        "label": "经验沉淀",
+        "score": 35,
+        "summary": "有界学习捕获审查已完成但证据不足：30 天窗口内 0 个可复核任务 Episode（会话源存在 disabled/missing 根警告，唯一会话为自我分析被剔除），2 条项目 Memory 的标题级元数据未能复核，无法区分重复工作与干净窗口。",
+        "findingRefs": [
+          "session-evidence-gap-blocks-repeat-detection"
+        ]
+      }
+    ]
+  },
+  "findings": [
+    {
+      "id": "untracked-red-test-pollutes-validation",
+      "title": "未跟踪的 test_counsel_graph.py 令文档化验证路径实测变红",
+      "severity": "High",
+      "reason": "已验证事实：按 README 验证路径执行 uv run pytest，全量 9 例失败，失败全部来自工作树中未跟踪的 apps/agent/tests/test_counsel_graph.py；仅运行跟踪内 tests/test_graph.py 则 5 例通过。该测试期望一个多阶段 counsel 图，而跟踪内 graph.py 只有单节点 chat 图。推断：这是先行落盘但未提交的下一迭代脚手架，其来源与归属 issue 未验证。后果：任何人或代理在本机执行文档化验证都得到无法归因的红色信号，无法区分基线损坏与在建意图，且该文件一旦误提交 CI 立即变红。",
+      "expectedOutput": [
+        "文档化验证路径 uv run pytest 恢复可归因的绿色基线，在建测试意图保留且有明确归属。"
+      ],
+      "expectedArtifact": "Test scaffold ownership",
+      "aiFixPrompt": "/better-harness fix this issue\n\n为 apps/agent/tests/test_counsel_graph.py 选择一条最小归属路线，恢复文档化验证路径的绿色基线：将其移入特性分支与实现共同提交，或为其加 pytest xfail/独立 marker 并在 README 注明其在建状态，或在关联 issue 后暂将其移出默认收集范围。不得删除该文件内容而不保留其意图记录。\n\n## Validation\n\n- 在 apps/agent 下运行 uv run pytest，确认默认收集范围全部通过\n- 确认该测试文件的意图（分支、marker 或 issue 关联）有一处可追溯记录",
+      "dimensionRefs": [
+        "change-validation"
+      ]
+    },
+    {
+      "id": "agent-subproject-unroutable",
+      "title": "零 AGENTS.md 且根清单只路由 web，Python agent 子项目对代理不可路由",
+      "severity": "Medium",
+      "reason": "已核实事实：仓库无任何 AGENTS.md/Rules（资产扫描 rules=0，文件核查一致）；根 package.json 所有脚本均 --filter @cos/web，pnpm-workspace.yaml 不含 apps/agent；agent 侧 uv sync/uv run pytest/uv run langgraph dev 只存在于 README 散文中。后果：根命令 pnpm test、pnpm lint 静默跳过整个 Python 子项目，容易产生验证已全部通过的假象——这正是未跟踪红色测试长期未被发现的温床。推断部分：代理实际遗漏 agent 侧验证为推断，但机械路由缺失为静态事实。",
+      "expectedOutput": [
+        "代理进入仓库后可机械发现双子项目的启动与验证命令，根级验证不再静默跳过 Python 侧。"
+      ],
+      "expectedArtifact": "AGENTS.md",
+      "aiFixPrompt": "/better-harness fix this issue\n\n在仓库根新增 AGENTS.md，包含双子项目命令表（web: pnpm lint/typecheck/test:ci/build/smoke；agent: uv sync、uv run pytest、uv run langgraph dev）与验证矩阵，并在根 package.json 增加聚合入口（如 test:agent）使 Python 侧验证可从根机械触达。可选：为 apps/web 与 apps/agent 各加一份嵌套作用域说明。\n\n## Validation\n\n- 确认根 AGENTS.md 列出的每条命令均可在对应目录实际执行\n- 从仓库根执行新增聚合脚本，确认 Python 侧测试被实际运行",
+      "dimensionRefs": [
+        "task-understanding"
+      ]
+    },
+    {
+      "id": "ci-narrower-than-declared-validation",
+      "title": "CI 门禁窄于 README 宣称的验证面，build 与 smoke 不在合入前拦截",
+      "severity": "Medium",
+      "reason": "已核实事实：README「Validation」要求 web 侧 lint/typecheck/test:ci/build 加 smoke，而 .github/workflows/ci.yml 的 web job 只运行前三项（agent job 运行 pytest）；format:check 存在但也未进 CI。后果：仅在生产构建暴露的错误（next build）与端到端断流不会在合入前被机械拦截，文档承诺的验证层与强制执行层出现落差，合入信心依赖提交者自觉。边界：CI 实际是否运行或通过未验证（未访问外部 CI），本发现仅基于 workflow 文件与 README 的静态差距。",
+      "expectedOutput": [
+        "CI 强制执行面与 README 宣称的验证面一致，或差异在文档中有明确声明。"
+      ],
+      "expectedArtifact": "CI workflow",
+      "aiFixPrompt": "/better-harness fix this issue\n\n在 .github/workflows/ci.yml 的 web job 中追加 pnpm build 步骤（零额外依赖），并评估 format:check 入 CI；smoke 需要常驻 langgraph dev 服务，可作为后续带服务步骤的独立 job 承接，或在 README 中明示 smoke 为本地手动验证层以消除文档与门禁的落差。\n\n## Validation\n\n- 本地执行 pnpm build 确认构建通过后再提交 workflow 变更\n- 核对更新后的 ci.yml 步骤与 README「Validation」清单逐项对应或差异有明示",
+      "dimensionRefs": [
+        "reliable-delivery"
+      ]
+    },
+    {
+      "id": "agent-side-no-lint-type-gate",
+      "title": "Python agent 子项目零 lint/type 门禁，与 web 侧质量面不对称",
+      "severity": "Low",
+      "reason": "已核实事实：apps/agent/pyproject.toml 的 dev 依赖组无 ruff/mypy，Python 侧唯一机械信号是 pytest；根 .gitignore 已预留 .ruff_cache/ 条目（推断曾有引入意图但未落地）。后果：风格漂移、未用导入与类型不一致（如 graph.py 中 dict 返回值对 AgentState 标注）没有机械检查与自动修复路径，web 侧则有 lint+typecheck+prettier 三层，质量面不对称。",
+      "expectedOutput": [
+        "Python 侧获得与 web 侧对称的机械 lint 信号，且该信号进入 CI 门禁。"
+      ],
+      "expectedArtifact": "Lint gate",
+      "aiFixPrompt": "/better-harness fix this issue\n\n在 apps/agent/pyproject.toml 的 dev 依赖组加入 ruff（lint+format），可选 mypy；补充最小 tool.ruff 配置，并在 .github/workflows/ci.yml 的 agent job 中插入 uv run ruff check 一步。\n\n## Validation\n\n- 在 apps/agent 下运行 uv run ruff check 并确认通过（或修复其报告的问题后通过）\n- 运行 uv run pytest 确认既有测试不受影响",
+      "dimensionRefs": [
+        "change-validation"
+      ]
+    },
+    {
+      "id": "session-evidence-gap-blocks-repeat-detection",
+      "title": "qoder 会话证据管道当前无法支撑重复工作与干净窗口判定",
+      "severity": "Low",
+      "reason": "已核实事实（qoder 提供方标注）：30 天窗口内会话事实信封保留 0 个候选 Episode，源警告含 disabled-source-root 与 missing-optional-root，唯一合格会话因自我分析属性被剔除；分析器同样报告 insufficient-episodes 且 1/5 启用源根存在。后果：本次学习捕获审查既不能确认重复程序/知识需求，也不能宣告干净无候选窗口，任何关于工作循环或验证习惯的会话侧结论均无依据。边界：缺失事实不等于零活动，不能据此推断项目无开发活动或缺少验证习惯。",
+      "expectedOutput": [
+        "会话证据边界被澄清：源根状态得到确认，后续审计可对重复工作做出有据判定。"
+      ],
+      "expectedArtifact": "Evidence boundary record",
+      "aiFixPrompt": "/better-harness fix this issue\n\n这是证据缺口而非代码缺陷：先确认 qoder 会话源根配置是否符合预期（disabled-source-root 与 missing-optional-root 警告对应的源是否应启用），在获得明确授权后再调整；随后在积累若干真实开发会话后重新运行 /better-harness，以可比任务 Episode 支撑或排除重复工作判定。不得在无授权情况下修改用户级配置。\n\n## Validation\n\n- 重新采集的会话事实信封中候选 Episode 数大于零，或源警告被确认为预期状态并记录\n- 下一次审计能给出重复候选或明确的干净无候选窗口结论",
+      "dimensionRefs": [
+        "learning-capture"
+      ]
+    }
+  ]
+}
