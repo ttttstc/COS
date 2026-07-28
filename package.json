@@ -1,0 +1,36 @@
+{
+  "name": "cos",
+  "private": true,
+  "packageManager": "pnpm@10.5.1",
+  "scripts": {
+    "dev": "pnpm --filter @cos/web dev",
+    "build": "pnpm --filter @cos/web build",
+    "lint": "pnpm --filter @cos/web lint",
+    "typecheck": "pnpm --filter @cos/web typecheck",
+    "test": "pnpm --filter @cos/web test",
+    "test:ci": "pnpm --filter @cos/web test:ci",
+    "smoke": "pnpm --filter @cos/web smoke"
+  },
+  "pnpm": {
+    "overrides": {
+      "@eslint/config-array>minimatch": "^3.1.3",
+      "eslint>minimatch": "^3.1.3",
+      "eslint-plugin-import>minimatch": "^3.1.3",
+      "eslint-plugin-jsx-a11y>minimatch": "^3.1.3",
+      "eslint-plugin-react>minimatch": "^3.1.3",
+      "@typescript-eslint/typescript-estree>minimatch": "^9.0.6",
+      "micromatch>picomatch": "^2.3.2",
+      "tinyglobby>picomatch": "^4.0.4",
+      "flat-cache>flatted": "^3.4.2",
+      "next>postcss": "^8.5.18",
+      "next>sharp": "^0.35.3",
+      "@eslint/eslintrc>js-yaml": "^4.3.0",
+      "minimatch@3>brace-expansion": "^1.1.16",
+      "minimatch@9>brace-expansion": "^5.0.8",
+      "ws": "^8.21.0",
+      "eslint>ajv": "^6.14.0",
+      "mdast-util-to-hast": "^13.2.1",
+      "refractor>prismjs": "^1.30.0"
+    }
+  }
+}
