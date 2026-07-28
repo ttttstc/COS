@@ -1,7 +1,7 @@
 # COS
 
 COS 是个人战略参谋 Agent「刘亚楼参谋台（LYL）」的产品与技术设计仓库。
-当前代码实现 Issue #3 的产品入口：刘亚楼参谋台品牌、四种主动模式与普通会商，
+当前代码实现 Issue #3 的产品入口：刘亚楼参谋台品牌、四种主动模式与自由讨论，
 底层保留 Agent Chat UI 和最小 LangGraph `messages` Agent。
 
 ## Repository layout
@@ -84,7 +84,7 @@ pnpm dev
 Open `http://localhost:3000`. Create a conversation and send a message. The
 stub Agent streams `本地 LangGraph 基线已连接。`
 
-首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入普通会商。
+首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入自由讨论。
 所选模式随每次消息作为 LangGraph Run Context 发送，并记录到新 Thread metadata。
 
 ## Production Web configuration

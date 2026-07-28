@@ -30,7 +30,7 @@ describe("thread summaries", () => {
     expect(getThreadMode(makeThread({ metadata: { mode: "diagnose" } }))).toBe(
       "diagnose",
     );
-    expect(getThreadModeLabel(makeThread())).toBe("会商");
+    expect(getThreadModeLabel(makeThread())).toBe("讨论");
   });
 
   it("maps SDK status and updated time to reader-facing labels", () => {

@@ -37,9 +37,9 @@ try {
   await expect(page.locator('input[type="file"]')).toHaveCount(1);
 
   await page.getByRole("button", { name: /调研后判断/ }).click();
-  const modeSelect = page.getByLabel("切换会商类型");
+  const modeSelect = page.getByLabel("切换议题类型");
   await expect(modeSelect).toHaveValue("research");
-  await expect(page.getByLabel("会商输入")).toHaveAttribute(
+  await expect(page.getByLabel("议题输入")).toHaveAttribute(
     "placeholder",
     "描述需要调研并形成判断的问题",
   );
@@ -48,13 +48,13 @@ try {
   await expect(modeSelect).toHaveValue("ask");
   await page.getByRole("button", { name: "清除下一步做什么模式" }).click();
   await expect(modeSelect).toHaveValue("discuss");
-  await expect(page.getByLabel("会商输入")).toHaveAttribute(
+  await expect(page.getByLabel("议题输入")).toHaveAttribute(
     "placeholder",
     "和刘亚楼讨论……",
   );
 
   await page.getByRole("button", { name: /帮我做决定/ }).click();
-  const composer = page.getByLabel("会商输入");
+  const composer = page.getByLabel("议题输入");
   await composer.fill("验证决策模式上下文。");
   await page.getByRole("button", { name: "Send" }).click();
   const cancel = page.getByRole("button", { name: "Cancel" });
@@ -62,7 +62,7 @@ try {
   await cancel.click();
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible();
 
-  await composer.fill("完成这次决策会商。");
+  await composer.fill("完成这项决策议题。");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(
     page.getByText("本地 LangGraph 基线已连接。").last(),
@@ -87,12 +87,12 @@ try {
   expect(thread.metadata.mode).toBe("decide");
 
   await page.reload({ waitUntil: "networkidle" });
-  await expect(page.getByText("完成这次决策会商。")).toBeVisible();
+  await expect(page.getByText("完成这项决策议题。")).toBeVisible();
   await expect(modeSelect).toHaveValue("decide");
 
   await page.waitForTimeout(4500);
-  await page.getByRole("button", { name: "打开历史会商" }).last().click();
-  await expect(page.getByText("历史会商", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "打开历史议题" }).last().click();
+  await expect(page.getByText("历史议题", { exact: true })).toBeVisible();
   await expect(page.getByText("决策", { exact: true }).first()).toBeVisible();
   await expect(
     page.getByText("已形成建议", { exact: true }).first(),
@@ -103,8 +103,8 @@ try {
   });
   await mobile.goto("http://127.0.0.1:3000", { waitUntil: "networkidle" });
   await mobile.getByRole("button", { name: /诊断历史思维/ }).click();
-  await expect(mobile.getByLabel("切换会商类型")).toHaveValue("diagnose");
-  await expect(mobile.getByLabel("会商输入")).toHaveAttribute(
+  await expect(mobile.getByLabel("切换议题类型")).toHaveValue("diagnose");
+  await expect(mobile.getByLabel("议题输入")).toHaveAttribute(
     "placeholder",
     "描述要诊断的时间范围或主题",
   );

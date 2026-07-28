@@ -8,7 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
-  busy: "会商中",
+  busy: "进行中",
   interrupted: "待用户裁决",
   idle: "已形成建议",
   error: "需要处理",

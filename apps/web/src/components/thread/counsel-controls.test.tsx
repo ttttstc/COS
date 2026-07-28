@@ -27,7 +27,7 @@ describe("counsel entry controls", () => {
       />,
     );
 
-    await user.selectOptions(screen.getByLabelText("切换会商类型"), "decide");
+    await user.selectOptions(screen.getByLabelText("切换议题类型"), "decide");
     expect(onChange).toHaveBeenCalledWith("decide");
 
     await user.click(

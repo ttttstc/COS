@@ -24,7 +24,7 @@ export const COUNSEL_MODES = [
     mode: "diagnose",
     label: "诊断历史思维",
     shortLabel: "诊断",
-    description: "从历史会商中寻找可验证的模式",
+    description: "从历史议题中寻找可验证的模式",
     placeholder: "描述要诊断的时间范围或主题",
   },
 ] as const;
@@ -44,8 +44,8 @@ export const DEFAULT_COUNSEL_MODE: CounselMode = "discuss";
 
 const DISCUSS_MODE = {
   mode: DEFAULT_COUNSEL_MODE,
-  label: "普通会商",
-  shortLabel: "会商",
+  label: "自由讨论",
+  shortLabel: "讨论",
   description: "自由讨论当前问题",
   placeholder: "和刘亚楼讨论……",
 } as const;

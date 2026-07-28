@@ -125,7 +125,7 @@ export default function ThreadHistory() {
           <Button
             className="hover:bg-gray-100"
             variant="ghost"
-            aria-label={chatHistoryOpen ? "收起历史会商" : "打开历史会商"}
+            aria-label={chatHistoryOpen ? "收起历史议题" : "打开历史议题"}
             onClick={() => setChatHistoryOpen((p) => !p)}
           >
             {chatHistoryOpen ? (
@@ -134,7 +134,7 @@ export default function ThreadHistory() {
               <PanelRightClose className="size-5" />
             )}
           </Button>
-          <h1 className="text-xl font-semibold tracking-tight">历史会商</h1>
+          <h1 className="text-xl font-semibold tracking-tight">历史议题</h1>
         </div>
         {threadsLoading ? (
           <ThreadHistoryLoading />
@@ -155,7 +155,7 @@ export default function ThreadHistory() {
             className="flex lg:hidden"
           >
             <SheetHeader>
-              <SheetTitle>历史会商</SheetTitle>
+              <SheetTitle>历史议题</SheetTitle>
             </SheetHeader>
             <ThreadList
               threads={threads}

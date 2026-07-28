@@ -150,7 +150,7 @@ export function Thread() {
 
       // Message is defined, and it has not been logged yet. Save it, and send the error
       lastError.current = message;
-      toast.error("会商运行失败，请重试。", {
+      toast.error("处理失败，请重试。", {
         description: (
           <p>
             <strong>错误：</strong> <code>{message}</code>
@@ -301,7 +301,7 @@ export function Thread() {
                     className="hover:bg-gray-100"
                     variant="ghost"
                     aria-label={
-                      chatHistoryOpen ? "收起历史会商" : "打开历史会商"
+                      chatHistoryOpen ? "收起历史议题" : "打开历史议题"
                     }
                     onClick={() => setChatHistoryOpen((p) => !p)}
                   >
@@ -324,7 +324,7 @@ export function Thread() {
                       className="hover:bg-gray-100"
                       variant="ghost"
                       aria-label={
-                        chatHistoryOpen ? "收起历史会商" : "打开历史会商"
+                        chatHistoryOpen ? "收起历史议题" : "打开历史议题"
                       }
                       onClick={() => setChatHistoryOpen((p) => !p)}
                     >
@@ -359,7 +359,7 @@ export function Thread() {
                 <TooltipIconButton
                   size="lg"
                   className="p-4"
-                  tooltip="新建会商"
+                  tooltip="新建议题"
                   variant="ghost"
                   onClick={() => setThreadId(null)}
                 >
@@ -459,7 +459,7 @@ export function Thread() {
                           }
                         }}
                         placeholder={getCounselMode(mode).placeholder}
-                        aria-label="会商输入"
+                        aria-label="议题输入"
                         className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 

@@ -17,11 +17,11 @@ export function CounselModeSelect({
 
   return (
     <div className="flex items-center gap-2 px-3 pt-3">
-      <span className="text-muted-foreground text-xs">会商类型</span>
+      <span className="text-muted-foreground text-xs">议题类型</span>
       <label className="bg-background inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium">
-        <span className="sr-only">切换会商类型</span>
+        <span className="sr-only">切换议题类型</span>
         <select
-          aria-label="切换会商类型"
+          aria-label="切换议题类型"
           value={mode}
           onChange={(event) => onChange(event.target.value as CounselMode)}
           className="cursor-pointer appearance-none bg-transparent pr-1 outline-none"

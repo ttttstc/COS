@@ -246,7 +246,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
                 Agent ID<span className="text-rose-500">*</span>
               </Label>
               <p className="text-muted-foreground text-sm">
-                用于读取历史会商并发起运行的 Graph 或 Assistant 标识。
+                用于读取历史议题并发起运行的 Graph 或 Assistant 标识。
               </p>
               <Input
                 id="assistantId"
