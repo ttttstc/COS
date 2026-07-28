@@ -12,7 +12,7 @@ import {
   DO_NOT_RENDER_ID_PREFIX,
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
-import { LangGraphLogoSVG } from "../icons/langgraph";
+import { LylMark } from "../icons/lyl";
 import { TooltipIconButton } from "./tooltip-icon-button";
 import {
   ArrowDown,
@@ -22,20 +22,14 @@ import {
   XIcon,
   Plus,
 } from "lucide-react";
-import { useQueryState, parseAsBoolean } from "nuqs";
+import { useQueryState, parseAsBoolean, parseAsStringLiteral } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import ThreadHistory from "./history";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Label } from "../ui/label";
 import { Switch } from "../ui/switch";
-import { GitHubSVG } from "../icons/github";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip";
+
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import {
@@ -46,6 +40,14 @@ import {
 } from "./artifact";
 import { canSubmitMessage } from "@/lib/composer";
 import { ComposerAction } from "./composer-action";
+import { CounselWelcome } from "./counsel-welcome";
+import { CounselModeSelect } from "./counsel-mode-select";
+import {
+  buildCounselRunContext,
+  COUNSEL_MODE_VALUES,
+  DEFAULT_COUNSEL_MODE,
+  getCounselMode,
+} from "@/lib/counsel-mode";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -83,32 +85,8 @@ function ScrollToBottom(props: { className?: string }) {
       onClick={() => scrollToBottom()}
     >
       <ArrowDown className="h-4 w-4" />
-      <span>Scroll to bottom</span>
+      <span>回到底部</span>
     </Button>
-  );
-}
-
-function OpenGitHubRepo() {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <a
-            href="https://github.com/langchain-ai/agent-chat-ui"
-            target="_blank"
-            className="flex items-center justify-center"
-          >
-            <GitHubSVG
-              width="24"
-              height="24"
-            />
-          </a>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          <p>Open GitHub repo</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }
 
@@ -126,6 +104,10 @@ export function Thread() {
     parseAsBoolean.withDefault(false),
   );
   const [input, setInput] = useState("");
+  const [mode, setMode] = useQueryState(
+    "mode",
+    parseAsStringLiteral(COUNSEL_MODE_VALUES).withDefault(DEFAULT_COUNSEL_MODE),
+  );
   const {
     contentBlocks,
     setContentBlocks,
@@ -147,6 +129,7 @@ export function Thread() {
 
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
+    if (!id) setMode(DEFAULT_COUNSEL_MODE);
 
     // close artifact and reset artifact context
     closeArtifact();
@@ -167,10 +150,10 @@ export function Thread() {
 
       // Message is defined, and it has not been logged yet. Save it, and send the error
       lastError.current = message;
-      toast.error("An error occurred. Please try again.", {
+      toast.error("处理失败，请重试。", {
         description: (
           <p>
-            <strong>Error:</strong> <code>{message}</code>
+            <strong>错误：</strong> <code>{message}</code>
           </p>
         ),
         richColors: true,
@@ -211,18 +194,18 @@ export function Thread() {
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
 
-    const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
+    const context = buildCounselRunContext(mode, artifactContext);
 
     stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
+      { messages: [...toolMessages, newHumanMessage] },
       {
+        context,
+        metadata: { mode },
         streamMode: ["values"],
         streamSubgraphs: true,
         streamResumable: true,
         optimisticValues: (prev) => ({
           ...prev,
-          context,
           messages: [
             ...(prev.messages ?? []),
             ...toolMessages,
@@ -243,6 +226,8 @@ export function Thread() {
     prevMessageLength.current = prevMessageLength.current - 1;
     setFirstTokenReceived(false);
     stream.submit(undefined, {
+      context: buildCounselRunContext(mode, artifactContext),
+      metadata: { mode },
       checkpoint: parentCheckpoint,
       streamMode: ["values"],
       streamSubgraphs: true,
@@ -315,6 +300,9 @@ export function Thread() {
                   <Button
                     className="hover:bg-gray-100"
                     variant="ghost"
+                    aria-label={
+                      chatHistoryOpen ? "收起历史议题" : "打开历史议题"
+                    }
                     onClick={() => setChatHistoryOpen((p) => !p)}
                   >
                     {chatHistoryOpen ? (
@@ -324,9 +312,6 @@ export function Thread() {
                     )}
                   </Button>
                 )}
-              </div>
-              <div className="absolute top-2 right-4 flex items-center">
-                <OpenGitHubRepo />
               </div>
             </div>
           )}
@@ -338,6 +323,9 @@ export function Thread() {
                     <Button
                       className="hover:bg-gray-100"
                       variant="ghost"
+                      aria-label={
+                        chatHistoryOpen ? "收起历史议题" : "打开历史议题"
+                      }
                       onClick={() => setChatHistoryOpen((p) => !p)}
                     >
                       {chatHistoryOpen ? (
@@ -360,24 +348,18 @@ export function Thread() {
                     damping: 30,
                   }}
                 >
-                  <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  />
+                  <LylMark />
                   <span className="text-xl font-semibold tracking-tight">
-                    Agent Chat
+                    刘亚楼参谋台
                   </span>
                 </motion.button>
               </div>
 
               <div className="flex items-center gap-4">
-                <div className="flex items-center">
-                  <OpenGitHubRepo />
-                </div>
                 <TooltipIconButton
                   size="lg"
                   className="p-4"
-                  tooltip="New thread"
+                  tooltip="新建议题"
                   variant="ghost"
                   onClick={() => setThreadId(null)}
                 >
@@ -434,14 +416,7 @@ export function Thread() {
               }
               footer={
                 <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
-                  {!chatStarted && (
-                    <div className="flex items-center gap-3">
-                      <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                      <h1 className="text-2xl font-semibold tracking-tight">
-                        Agent Chat
-                      </h1>
-                    </div>
-                  )}
+                  {!chatStarted && <CounselWelcome onSelectMode={setMode} />}
 
                   <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
 
@@ -456,8 +431,12 @@ export function Thread() {
                   >
                     <form
                       onSubmit={handleSubmit}
-                      className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2"
+                      className="mx-auto grid max-w-3xl gap-2"
                     >
+                      <CounselModeSelect
+                        mode={mode}
+                        onChange={setMode}
+                      />
                       <ContentBlocksPreview
                         blocks={contentBlocks}
                         onRemove={removeBlock}
@@ -479,11 +458,12 @@ export function Thread() {
                             form?.requestSubmit();
                           }
                         }}
-                        placeholder="Type your message..."
+                        placeholder={getCounselMode(mode).placeholder}
+                        aria-label="议题输入"
                         className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
                       />
 
-                      <div className="flex items-center gap-6 p-2 pt-4">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 p-2 pt-2 sm:gap-6 sm:pt-4">
                         <div>
                           <div className="flex items-center space-x-2">
                             <Switch
@@ -495,7 +475,7 @@ export function Thread() {
                               htmlFor="render-tool-calls"
                               className="text-sm text-gray-600"
                             >
-                              Hide Tool Calls
+                              隐藏工具调用
                             </Label>
                           </div>
                         </div>
@@ -505,7 +485,7 @@ export function Thread() {
                         >
                           <Plus className="size-5 text-gray-600" />
                           <span className="text-sm text-gray-600">
-                            Upload PDF or Image
+                            添加 PDF 或图片
                           </span>
                         </Label>
                         <input
