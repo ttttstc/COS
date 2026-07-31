@@ -1,4 +1,9 @@
-import { ChevronRight, X, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import {
+  ArrowsInLineVertical,
+  ArrowsOutLineVertical,
+  CaretRight,
+  X,
+} from "@/components/icons/lyl-icons";
 import { useEffect, useState } from "react";
 import {
   baseMessageObject,
@@ -194,7 +199,7 @@ export function StateViewObject(props: StateViewProps) {
           onClick={() => setExpanded((prev) => !prev)}
           className="flex h-5 w-5 cursor-pointer items-center justify-center rounded-md text-gray-500 transition-colors ease-in-out hover:bg-gray-100 hover:text-black"
         >
-          <ChevronRight className="h-4 w-4" />
+          <CaretRight className="h-4 w-4" />
         </div>
       </motion.div>
       <div className="flex w-full flex-col items-start justify-start gap-1">
@@ -282,9 +287,9 @@ export function StateView({
             size="sm"
           >
             {expanded ? (
-              <ChevronsUpDown className="h-4 w-4" />
+              <ArrowsInLineVertical className="h-4 w-4" />
             ) : (
-              <ChevronsDownUp className="h-4 w-4" />
+              <ArrowsOutLineVertical className="h-4 w-4" />
             )}
           </Button>
         )}

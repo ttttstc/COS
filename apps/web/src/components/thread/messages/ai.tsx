@@ -1,6 +1,11 @@
 import { parsePartialJson } from "@langchain/core/output_parsers";
 import { useStreamContext } from "@/providers/Stream";
-import { AIMessage, Checkpoint, Message } from "@langchain/langgraph-sdk";
+import {
+  AIMessage,
+  Checkpoint,
+  Message,
+  ToolMessage,
+} from "@langchain/langgraph-sdk";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { getContentString } from "../utils";
 import { BranchSwitcher, CommandBar } from "./shared";
@@ -15,6 +20,16 @@ import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
+import {
+  CounselMessageRenderer,
+  DecisionInterruptCard,
+} from "@/components/clauseos";
+import {
+  buildStructuredInterruptResume,
+  parseStructuredDecisionInterrupt,
+  type StructuredDecisionInterrupt,
+} from "@/lib/decision-interrupt";
+import { useState } from "react";
 
 function CustomComponent({
   message,
@@ -74,6 +89,70 @@ interface InterruptProps {
   hasNoAIOrToolMessages: boolean;
 }
 
+export function StructuredInterruptView({
+  interrupt,
+}: {
+  interrupt: StructuredDecisionInterrupt;
+}) {
+  const stream = useStreamContext();
+  const [selection, setSelection] = useState<string | undefined>(
+    interrupt.recommendedOptionId ?? interrupt.options[0]?.id,
+  );
+  const [submitting, setSubmitting] = useState(false);
+  const [cancelAnnouncement, setCancelAnnouncement] = useState("");
+
+  const resume = async (value: string) => {
+    setSubmitting(true);
+    try {
+      await stream.submit(
+        {},
+        {
+          command: {
+            resume: buildStructuredInterruptResume(interrupt, value),
+          },
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
+        },
+      );
+    } catch (error) {
+      setSubmitting(false);
+      console.error("Error resuming counsel interrupt", error);
+    }
+  };
+
+  return (
+    <>
+      <DecisionInterruptCard
+        interruptId={interrupt.interruptId}
+        title={interrupt.title}
+        question={interrupt.question}
+        rationale={interrupt.rationale}
+        options={interrupt.options}
+        selectedOptionId={selection}
+        submitting={submitting}
+        allowReportNow={interrupt.allowReportNow}
+        onSelect={(value) => {
+          setSelection(value);
+          setCancelAnnouncement("");
+        }}
+        onCancel={() => {
+          setSelection(undefined);
+          setCancelAnnouncement("已取消当前选择，议题仍等待裁决。");
+        }}
+        onConfirm={resume}
+        onReportNow={() => void resume("report_now")}
+      />
+      <span
+        className="lyl-visually-hidden"
+        role="status"
+      >
+        {cancelAnnouncement}
+      </span>
+    </>
+  );
+}
+
 function Interrupt({
   interrupt,
   isLastMessage,
@@ -83,16 +162,26 @@ function Interrupt({
     ? (interrupt as Record<string, any>[])
     : (((interrupt as { value?: unknown } | undefined)?.value ??
         interrupt) as Record<string, any>);
+  const structuredInterrupt = parseStructuredDecisionInterrupt(interrupt);
+  const shouldRender = isLastMessage || hasNoAIOrToolMessages;
 
   return (
     <>
-      {isAgentInboxInterruptSchema(interrupt) &&
-        (isLastMessage || hasNoAIOrToolMessages) && (
-          <ThreadView interrupt={interrupt} />
+      {isAgentInboxInterruptSchema(interrupt) && shouldRender && (
+        <ThreadView interrupt={interrupt} />
+      )}
+      {!isAgentInboxInterruptSchema(interrupt) &&
+        structuredInterrupt &&
+        shouldRender && (
+          <StructuredInterruptView
+            key={structuredInterrupt.interruptId}
+            interrupt={structuredInterrupt}
+          />
         )}
       {interrupt &&
       !isAgentInboxInterruptSchema(interrupt) &&
-      (isLastMessage || hasNoAIOrToolMessages) ? (
+      !structuredInterrupt &&
+      shouldRender ? (
         <GenericInterruptView interrupt={fallbackValue} />
       ) : null}
     </>
@@ -116,8 +205,23 @@ export function AssistantMessage({
   );
 
   const thread = useStreamContext();
-  const isLastMessage =
-    thread.messages[thread.messages.length - 1].id === message?.id;
+  const isLastMessage = thread.messages.at(-1)?.id === message?.id;
+  const messageIndex = message
+    ? thread.messages.findIndex(
+        (candidate) =>
+          candidate === message ||
+          (Boolean(message.id) && candidate.id === message.id),
+      )
+    : -1;
+  const followingToolMessages =
+    messageIndex < 0
+      ? []
+      : thread.messages
+          .slice(messageIndex + 1)
+          .filter(
+            (candidate): candidate is ToolMessage => candidate.type === "tool",
+          );
+  const toolCallsAreStreaming = isLoading && isLastMessage;
   const hasNoAIOrToolMessages = !thread.messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
@@ -147,7 +251,11 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="group mr-auto flex w-full items-start gap-2">
+    <CounselMessageRenderer
+      messageRole={isToolResult ? "system" : "assistant"}
+      streaming={isLoading && isLastMessage}
+      className="group"
+    >
       <div className="flex w-full flex-col gap-2">
         {isToolResult ? (
           <>
@@ -169,13 +277,25 @@ export function AssistantMessage({
             {!hideToolCalls && (
               <>
                 {(hasToolCalls && toolCallsHaveContents && (
-                  <ToolCalls toolCalls={message.tool_calls} />
+                  <ToolCalls
+                    toolCalls={message.tool_calls}
+                    toolMessages={followingToolMessages}
+                    isStreaming={toolCallsAreStreaming}
+                  />
                 )) ||
                   (hasAnthropicToolCalls && (
-                    <ToolCalls toolCalls={anthropicStreamedToolCalls} />
+                    <ToolCalls
+                      toolCalls={anthropicStreamedToolCalls}
+                      toolMessages={followingToolMessages}
+                      isStreaming={toolCallsAreStreaming}
+                    />
                   )) ||
                   (hasToolCalls && (
-                    <ToolCalls toolCalls={message.tool_calls} />
+                    <ToolCalls
+                      toolCalls={message.tool_calls}
+                      toolMessages={followingToolMessages}
+                      isStreaming={toolCallsAreStreaming}
+                    />
                   ))}
               </>
             )}
@@ -213,18 +333,24 @@ export function AssistantMessage({
           </>
         )}
       </div>
-    </div>
+    </CounselMessageRenderer>
   );
 }
 
 export function AssistantMessageLoading() {
   return (
-    <div className="mr-auto flex items-start gap-2">
-      <div className="bg-muted flex h-8 items-center gap-1 rounded-2xl px-4 py-2">
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full"></div>
-        <div className="bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full"></div>
+    <CounselMessageRenderer
+      messageRole="assistant"
+      streaming
+    >
+      <div
+        className="flex h-8 items-center gap-1 px-1"
+        aria-label="正在形成建议"
+      >
+        <div className="cos-thread-loading-dot bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_infinite] rounded-full"></div>
+        <div className="cos-thread-loading-dot bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_0.5s_infinite] rounded-full"></div>
+        <div className="cos-thread-loading-dot bg-foreground/50 h-1.5 w-1.5 animate-[pulse_1.5s_ease-in-out_1s_infinite] rounded-full"></div>
       </div>
-    </div>
+    </CounselMessageRenderer>
   );
 }

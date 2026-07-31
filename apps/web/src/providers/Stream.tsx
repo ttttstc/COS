@@ -20,15 +20,16 @@ import { Button } from "@/components/ui/button";
 import { LylMark } from "@/components/icons/lyl";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/icons/lyl-icons";
 import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { type CounselMode } from "@/lib/counsel-mode";
 import { resolveApiUrl, resolveStreamConfig } from "@/lib/stream-config";
+import type { CounselState } from "@/lib/counsel-state";
 
-export type StateType = { messages: Message[]; ui?: UIMessage[] };
+export type StateType = CounselState;
 
 const useTypedStream = useStream<
   StateType,
@@ -96,6 +97,7 @@ const StreamSession = ({
     }),
     threadId: threadId ?? null,
     fetchStateHistory: true,
+    reconnectOnMount: true,
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {
@@ -109,6 +111,9 @@ const StreamSession = ({
       // Refetch threads list when thread ID changes.
       // Wait for some seconds before fetching so we're able to get the new thread that was created.
       sleep().then(() => getThreads().then(setThreads).catch(console.error));
+    },
+    onFinish: () => {
+      getThreads().then(setThreads).catch(console.error);
     },
   });
 

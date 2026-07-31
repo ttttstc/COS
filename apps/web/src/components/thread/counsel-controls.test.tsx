@@ -10,7 +10,7 @@ describe("counsel entry controls", () => {
     const onSelectMode = vi.fn();
     render(<CounselWelcome onSelectMode={onSelectMode} />);
 
-    expect(screen.getByText("今天需要参谋什么？")).toBeInTheDocument();
+    expect(screen.getByText("今天需要我帮你判断什么？")).toBeInTheDocument();
     expect(screen.getAllByRole("button")).toHaveLength(4);
 
     await user.click(screen.getByRole("button", { name: /调研后判断/ }));

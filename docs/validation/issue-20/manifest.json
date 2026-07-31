@@ -1,0 +1,189 @@
+{
+  "baseURL": "http://127.0.0.1:3001",
+  "capturedAt": "2026-07-31T19:57:18.765Z",
+  "evidence": [
+    {
+      "bytes": 1654769,
+      "filename": "control-gallery-1440.png",
+      "height": 7622,
+      "label": "Control Gallery",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 249205,
+      "filename": "workbench-1440-new.png",
+      "height": 900,
+      "label": "1440 new issue",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=new",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 269228,
+      "filename": "workbench-1440-running.png",
+      "height": 900,
+      "label": "1440 in progress",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=running",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 333430,
+      "filename": "workbench-1440-waiting.png",
+      "height": 900,
+      "label": "1440 waiting for decision",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=waiting",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 281883,
+      "filename": "workbench-1440-formal.png",
+      "height": 900,
+      "label": "1440 formal counsel",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=ready",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 244023,
+      "filename": "workbench-1280-formal.png",
+      "height": 800,
+      "label": "1280 formal counsel",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=ready",
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "width": 1280
+    },
+    {
+      "bytes": 186428,
+      "filename": "workbench-1024-formal.png",
+      "height": 768,
+      "label": "1024 compact desktop",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=ready",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "width": 1024
+    },
+    {
+      "bytes": 17066,
+      "filename": "workbench-960-desktop-only.png",
+      "height": 720,
+      "label": "960 desktop-only guard",
+      "reducedMotion": "no-preference",
+      "route": "/workbench-preview?state=ready",
+      "viewport": {
+        "width": 960,
+        "height": 720
+      },
+      "width": 960
+    },
+    {
+      "bytes": 179890,
+      "filename": "control-gallery-command-palette.png",
+      "height": 900,
+      "label": "Command palette",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 196639,
+      "filename": "control-gallery-filter-popover.png",
+      "height": 900,
+      "label": "Filter popover",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 142175,
+      "filename": "control-gallery-modal.png",
+      "height": 900,
+      "label": "Confirmation modal",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 154965,
+      "filename": "control-gallery-toast.png",
+      "height": 900,
+      "label": "Toast",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 217856,
+      "filename": "control-gallery-keyboard-focus.png",
+      "height": 900,
+      "label": "Keyboard focus",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 269228,
+      "filename": "workbench-reduced-motion.png",
+      "height": 900,
+      "label": "Reduced motion",
+      "reducedMotion": "reduce",
+      "route": "/workbench-preview?state=running",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    }
+  ],
+  "failures": []
+}

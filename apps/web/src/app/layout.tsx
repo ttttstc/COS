@@ -14,7 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html
+      lang="zh-CN"
+      className="dark"
+      suppressHydrationWarning
+    >
       <body>
         <NuqsAdapter>{children}</NuqsAdapter>
       </body>

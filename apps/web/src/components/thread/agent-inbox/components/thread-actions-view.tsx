@@ -167,7 +167,7 @@ export function ThreadActionsView({
     window.open(studioUrl, "_blank");
   };
 
-  const handleApproveAll = useCallback(() => {
+  const handleApproveAll = useCallback(async () => {
     if (!hasMultipleActions) return;
 
     try {
@@ -175,12 +175,15 @@ export function ThreadActionsView({
         type: "approve",
       }));
 
-      stream.submit(
+      await stream.submit(
         {},
         {
           command: {
             resume: { decisions: allDecisions },
           },
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
         },
       );
 
@@ -199,7 +202,7 @@ export function ThreadActionsView({
     }
   }, [actionRequests, hasMultipleActions, stream]);
 
-  const handleSubmitAll = useCallback(() => {
+  const handleSubmitAll = useCallback(async () => {
     if (!hasMultipleActions) return;
 
     if (addressedActions.size !== actionRequests.length) {
@@ -222,12 +225,15 @@ export function ThreadActionsView({
         return decision;
       });
 
-      stream.submit(
+      await stream.submit(
         {},
         {
           command: {
             resume: { decisions: allDecisions },
           },
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
         },
       );
 

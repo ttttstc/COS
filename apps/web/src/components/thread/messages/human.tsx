@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MultimodalPreview } from "@/components/thread/MultimodalPreview";
 import { isBase64ContentBlock } from "@/lib/multimodal-utils";
+import { CounselMessageRenderer } from "@/components/clauseos";
 
 function EditableContent({
   value,
@@ -74,9 +75,10 @@ export function HumanMessage({
   };
 
   return (
-    <div
+    <CounselMessageRenderer
+      messageRole="user"
       className={cn(
-        "group ml-auto flex items-center gap-2",
+        "group",
         isEditing && "w-full max-w-xl",
       )}
     >
@@ -111,7 +113,7 @@ export function HumanMessage({
             )}
             {/* Render text if present, otherwise fallback to file/image name */}
             {contentString ? (
-              <p className="bg-muted ml-auto w-fit rounded-3xl px-4 py-2 text-right whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap">
                 {contentString}
               </p>
             ) : null}
@@ -146,6 +148,6 @@ export function HumanMessage({
           />
         </div>
       </div>
-    </div>
+    </CounselMessageRenderer>
   );
 }

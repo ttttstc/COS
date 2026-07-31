@@ -12,7 +12,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelRightOpen, PanelRightClose } from "lucide-react";
+import {
+  ArrowsInSimple,
+  ArrowsOutSimple,
+} from "@/components/icons/lyl-icons";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import {
   getThreadMode,
@@ -129,9 +132,9 @@ export default function ThreadHistory() {
             onClick={() => setChatHistoryOpen((p) => !p)}
           >
             {chatHistoryOpen ? (
-              <PanelRightOpen className="size-5" />
+              <ArrowsInSimple className="size-5" />
             ) : (
-              <PanelRightClose className="size-5" />
+              <ArrowsOutSimple className="size-5" />
             )}
           </Button>
           <h1 className="text-xl font-semibold tracking-tight">历史议题</h1>

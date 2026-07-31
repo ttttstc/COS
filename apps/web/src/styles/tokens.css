@@ -1,0 +1,167 @@
+:root {
+  color-scheme: dark;
+
+  /* Environment */
+  --lyl-bg-void: #050608;
+  --lyl-bg-primary: #08090c;
+  --lyl-bg-content: #0d0f13;
+  --lyl-bg-content-raised: #12151a;
+  --lyl-bg-sidebar: rgba(13, 15, 19, 0.74);
+  --lyl-dot: rgba(255, 255, 255, 0.035);
+
+  /* Text */
+  --lyl-text-1: #f3f5f7;
+  --lyl-text-2: #b8bec7;
+  --lyl-text-3: #777f8b;
+  --lyl-text-disabled: #4d535c;
+  --lyl-text-inverse: #04100a;
+
+  /* Accent and semantics */
+  --lyl-green-500: #00c66b;
+  --lyl-green-400: #42e384;
+  --lyl-green-soft: rgba(66, 227, 132, 0.1);
+  --lyl-blue: #5f9dff;
+  --lyl-warning: #f5b73f;
+  --lyl-danger: #ff514b;
+  --lyl-neutral: #9299a3;
+
+  /* Glass body */
+  --lyl-glass-clear: rgba(255, 255, 255, 0.025);
+  --lyl-glass-thin: rgba(255, 255, 255, 0.045);
+  --lyl-glass-regular: rgba(255, 255, 255, 0.065);
+  --lyl-glass-thick: rgba(255, 255, 255, 0.105);
+  --lyl-glass-border: rgba(235, 242, 255, 0.3);
+  --lyl-glass-border-soft: rgba(235, 242, 255, 0.13);
+  --lyl-glass-inner: rgba(255, 255, 255, 0.13);
+  --lyl-glass-shadow: 0 18px 60px rgba(0, 0, 0, 0.48);
+  --lyl-glass-shadow-sm: 0 8px 26px rgba(0, 0, 0, 0.38);
+
+  /* Glass primitive rendering. Keep these formulas centralized so every
+     production glass surface uses the same physical body and optics. */
+  --lyl-ambient-white-wash:
+    radial-gradient(
+      ellipse at 68% 5%,
+      rgba(255, 255, 255, 0.028),
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 8% 28%,
+      rgba(255, 255, 255, 0.018),
+      transparent 30%
+    );
+  --lyl-glass-gradient-regular: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.085),
+    rgba(255, 255, 255, 0.022) 38%,
+    rgba(255, 255, 255, 0.014) 72%,
+    rgba(255, 255, 255, 0.052)
+  );
+  --lyl-glass-gradient-thin: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.06),
+    rgba(255, 255, 255, 0.014) 60%,
+    rgba(255, 255, 255, 0.03)
+  );
+  --lyl-glass-gradient-thick: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.125),
+    rgba(255, 255, 255, 0.038) 45%,
+    rgba(255, 255, 255, 0.072)
+  );
+  --lyl-glass-shadow-regular:
+    inset 0 1px 0 var(--lyl-glass-inner),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.025), var(--lyl-glass-shadow-sm);
+  --lyl-glass-shadow-thick:
+    inset 0 1px 0 var(--lyl-glass-inner),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.035), var(--lyl-glass-shadow);
+  --lyl-glass-filter-regular: blur(22px) saturate(128%);
+  --lyl-glass-filter-thick: blur(28px) saturate(135%);
+  --lyl-glass-border-hover: rgba(235, 242, 255, 0.44);
+  --lyl-glass-border-active: rgba(235, 242, 255, 0.48);
+  --lyl-glass-shadow-active:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 0 1px rgba(66, 227, 132, 0.14),
+    0 16px 44px rgba(0, 0, 0, 0.46);
+  --lyl-modal-backdrop-filter: blur(5px);
+
+  /* Edge lighting */
+  --lyl-edge-white: rgba(255, 255, 255, 0.72);
+  --lyl-edge-cool: rgba(141, 193, 255, 0.24);
+  --lyl-edge-warm: rgba(255, 203, 121, 0.16);
+  --lyl-edge-green: rgba(0, 255, 157, 0.24);
+  --lyl-silver-edge-shadow:
+    inset 0 1px 0 var(--lyl-edge-white),
+    inset 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset -1px 0 0 var(--lyl-glass-border-soft),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.045);
+  --lyl-status-dot-border: rgba(255, 255, 255, 0.2);
+  --lyl-status-running-shadow: 0 0 10px rgba(66, 227, 132, 0.55);
+  --lyl-status-pulse-shadow: 0 0 4px var(--lyl-edge-green);
+  --lyl-split-handle-drag-shadow: 0 0 10px var(--lyl-edge-green);
+
+  /* Borders */
+  --lyl-border-content: rgba(255, 255, 255, 0.07);
+  --lyl-border-control: rgba(255, 255, 255, 0.15);
+  --lyl-border-focus: rgba(66, 227, 132, 0.62);
+
+  /* Type */
+  --lyl-font-brand:
+    Urbanist, Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --lyl-font-ui:
+    Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, -apple-system,
+    sans-serif;
+  --lyl-display: 36px;
+  --lyl-title-xl: 28px;
+  --lyl-title-lg: 22px;
+  --lyl-title-md: 18px;
+  --lyl-title-sm: 16px;
+  --lyl-body: 14px;
+  --lyl-body-sm: 13px;
+  --lyl-caption: 12px;
+  --lyl-micro: 11px;
+
+  /* Spacing */
+  --lyl-space-1: 4px;
+  --lyl-space-2: 8px;
+  --lyl-space-3: 12px;
+  --lyl-space-4: 16px;
+  --lyl-space-5: 20px;
+  --lyl-space-6: 24px;
+  --lyl-space-8: 32px;
+  --lyl-space-12: 48px;
+
+  /* Radius */
+  --lyl-radius-xs: 6px;
+  --lyl-radius-sm: 10px;
+  --lyl-radius-md: 14px;
+  --lyl-radius-lg: 20px;
+  --lyl-radius-xl: 24px;
+  --lyl-radius-pill: 999px;
+
+  /* Motion */
+  --lyl-dur-fast: 120ms;
+  --lyl-dur-normal: 160ms;
+  --lyl-dur-panel: 220ms;
+  --lyl-dur-layout: 250ms;
+  --lyl-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --lyl-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Desktop layout */
+  --lyl-sidebar-wide: 272px;
+  --lyl-sidebar-mid: 240px;
+  --lyl-sidebar-compact: 72px;
+  --lyl-material-wide: 392px;
+  --lyl-material-mid: 360px;
+  --lyl-material-compact: 320px;
+  --lyl-topbar-height: 64px;
+  --lyl-composer-min: 76px;
+
+  /* Layering */
+  --lyl-z-dropdown: 20;
+  --lyl-z-sticky: 30;
+  --lyl-z-popover: 40;
+  --lyl-z-modal-backdrop: 50;
+  --lyl-z-modal: 60;
+  --lyl-z-toast: 70;
+  --lyl-z-tooltip: 80;
+}

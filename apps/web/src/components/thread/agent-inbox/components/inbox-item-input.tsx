@@ -3,7 +3,7 @@ import { DecisionWithEdits, SubmitType, HITLRequest } from "../types";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Undo2 } from "lucide-react";
+import { ArrowCounterClockwise } from "@/components/icons/lyl-icons";
 import { MarkdownText } from "../../markdown-text";
 import { haveArgsChanged, prettifyText } from "../utils";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ function ResetButton({ handleReset }: { handleReset: () => void }) {
       variant="ghost"
       className="flex items-center justify-center gap-2 text-gray-500 hover:text-red-500"
     >
-      <Undo2 className="h-4 w-4" />
+      <ArrowCounterClockwise className="h-4 w-4" />
       <span>Reset</span>
     </Button>
   );
