@@ -18,12 +18,12 @@ from lyl_agent.memory import (
     MemoryType,
     MemoryUpdate,
 )
-from lyl_agent.settings import load_settings
+from lyl_agent.settings import load_memory_db_path
 
 
 @lru_cache(maxsize=1)
 def default_repository() -> MemoryRepository:
-    return MemoryRepository(load_settings().memory_db_path)
+    return MemoryRepository(load_memory_db_path())
 
 
 def require_user_id(

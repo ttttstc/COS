@@ -1,5 +1,6 @@
 """Environment-backed model configuration."""
 
+import os
 from pathlib import Path
 
 from pydantic import SecretStr, ValidationError
@@ -24,7 +25,13 @@ class Settings(BaseSettings):
     model_api_key: SecretStr | None = None
     model_base_url: str | None = None
     stub_response: str = "Local LangGraph baseline is connected."
-    memory_db_path: Path = Path(".data/lyl-memory.sqlite3")
+
+
+def load_memory_db_path() -> Path:
+    """Load memory storage without requiring model configuration."""
+
+    configured = os.getenv("LYL_MEMORY_DB_PATH", "").strip()
+    return Path(configured or ".data/lyl-memory.sqlite3")
 
 
 def load_settings() -> Settings:

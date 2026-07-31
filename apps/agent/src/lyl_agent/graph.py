@@ -14,7 +14,7 @@ from langgraph.runtime import Runtime
 
 from lyl_agent.models import create_chat_model
 from lyl_agent.memory import MemoryRepository
-from lyl_agent.settings import load_settings
+from lyl_agent.settings import load_memory_db_path, load_settings
 from lyl_agent.state import CounselContext, CounselMode, CounselScope, CounselState
 
 logger = logging.getLogger(__name__)
@@ -182,7 +182,7 @@ async def retrieve_context(
     ):
         selected_memory_ids = None
     active_repository = repository or _memory_repository(
-        str(load_settings().memory_db_path)
+        str(load_memory_db_path().resolve())
     )
     snapshot = active_repository.build_context_snapshot(
         user_id,

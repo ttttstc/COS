@@ -163,7 +163,11 @@ class MemoryRepository:
     """Small tenant-scoped repository; one SQLite connection per operation."""
 
     def __init__(self, database_path: str | Path) -> None:
-        self.database_path = str(database_path)
+        self.database_path = (
+            ":memory:"
+            if str(database_path) == ":memory:"
+            else str(Path(database_path).expanduser().resolve())
+        )
         if self.database_path != ":memory:":
             Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
