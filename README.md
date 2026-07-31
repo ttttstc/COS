@@ -1,10 +1,11 @@
 # COS
 
 COS 是个人战略参谋 Agent「刘亚楼参谋台（LYL）」的产品与技术设计仓库。
-当前代码实现 Issue #4 的 Agent Graph 基线：官方 Agent Chat UI 前端和一个单主
-LangGraph 参谋图。该图支持五种模式、Run Context 优先路由、阶段状态与模型降级结果。
+当前代码整合 Issue #3 的参谋台品牌入口与 Issue #4 的单主 Agent Graph：前端支持
+四种主动模式和自由讨论，Graph 支持五种模式、Run Context 优先路由、阶段状态与
+模型降级结果。
 
-### Issue #4 scope in this PR
+### Issue #4 scope
 
 This baseline includes the five nodes named in Issue #4: `intake`, `mode_router`,
 `retrieve_context`, `problem_reframe`, and `synthesize_counsel`. It also reserves
@@ -21,7 +22,8 @@ COS/
 ├── apps/
 │   ├── web/    # Agent Chat UI source baseline
 │   └── agent/  # Python 3.12 LangGraph service
-├── docs/       # PRD and SPEC
+├── design-system/ # ClauseOS UI implementation kit
+├── docs/       # PRD, SPEC, UI design and Codex handoff
 └── .github/workflows/ci.yml
 ```
 
@@ -94,17 +96,33 @@ pnpm dev
 Open `http://localhost:3000`. Create a conversation and send a message. The
 stub Agent streams `本地 LangGraph 基线已连接。`
 
+首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入自由讨论。
+所选模式随每次消息作为 LangGraph Run Context 发送，并记录到新 Thread metadata。
+
+## Production Web configuration
+
+生产构建不会显示 Deployment URL、Assistant ID 或 API Key 配置表单。Web 默认
+通过同源 `/api` Proxy 连接 Agent；部署时设置服务端变量：
+
+```dotenv
+LANGGRAPH_API_URL=https://your-agent.example.com
+LANGSMITH_API_KEY=replace-on-server
+```
+
+`LANGSMITH_API_KEY` 不得使用 `NEXT_PUBLIC_` 前缀。需要覆盖默认 Agent ID 时设置
+`NEXT_PUBLIC_ASSISTANT_ID`。
+
 ## Model configuration
 
 Agent settings use the `LYL_` environment prefix:
 
-| Variable | Purpose |
-|---|---|
-| `LYL_MODEL_PROVIDER` | LangChain provider name, or `stub` |
-| `LYL_MODEL` | Provider model identifier |
-| `LYL_MODEL_API_KEY` | Secret key; not needed for `stub` |
+| Variable             | Purpose                             |
+| -------------------- | ----------------------------------- |
+| `LYL_MODEL_PROVIDER` | LangChain provider name, or `stub`  |
+| `LYL_MODEL`          | Provider model identifier           |
+| `LYL_MODEL_API_KEY`  | Secret key; not needed for `stub`   |
 | `LYL_MODEL_BASE_URL` | Optional OpenAI-compatible endpoint |
-| `LYL_STUB_RESPONSE` | Local no-key response |
+| `LYL_STUB_RESPONSE`  | Local no-key response               |
 
 Example for an OpenAI model:
 
@@ -175,10 +193,40 @@ at commit `fdc87e65307581b02898d33c62b3f285e56bd85b`.
 
 The upstream MIT license is preserved in `apps/web/LICENSE`; see
 `NOTICE.md` for attribution. Thread history, streaming, stop, file upload,
-Interrupt, and Artifact foundations remain present. Product branding and
-formal counsel behavior are intentionally deferred.
+Interrupt, and Artifact foundations remain present. The Issue #3 product shell adds LYL branding and counsel-mode entry points while keeping
+upstream interaction foundations intact. Formal counsel behavior remains deferred.
 
 ## Product documents
 
 - [PRD V1.0](docs/LYL-参谋台-PRD-V1.0.md)
 - [SPEC V1.0](docs/LYL-参谋台-SPEC-V1.0.md)
+
+## ClauseOS desktop UI implementation
+
+Issue [#20](https://github.com/ttttstc/COS/issues/20) contains the Codex-ready
+implementation plan for the desktop-only ClauseOS issue workbench.
+
+Required design inputs:
+
+- [Original ClauseOS UI/UX specification](docs/design/reference/ClauseOS-UI-UX-Design-Spec-V2.0.md)
+- [LYL desktop implementation specification V2.0](docs/design/LYL-ClauseOS-Desktop-UI-Implementation-Spec-V2.0.md)
+- [Control inventory](docs/design/controls/CONTROL-INVENTORY.md)
+- [Control state and visual acceptance matrix](docs/design/controls/CONTROL-STATE-MATRIX.md)
+- [Design system implementation kit](design-system/README.md)
+- [Interactive control gallery](design-system/control-gallery.html)
+- [Interactive UCD prototype](docs/design/ucd/lyl-interactive-ucd.html)
+- [Codex handoff](docs/codex/CODEX-ISSUE-20-HANDOFF.md)
+
+GitHub does not execute the interactive HTML files in code view. Preview them
+from a checkout:
+
+```bash
+python -m http.server 8080
+```
+
+Then open:
+
+```text
+http://localhost:8080/design-system/control-gallery.html
+http://localhost:8080/docs/design/ucd/lyl-interactive-ucd.html
+```
