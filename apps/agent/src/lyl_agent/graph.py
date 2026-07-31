@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import cast, get_args
+from typing import Literal, cast, get_args
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage
@@ -12,11 +12,12 @@ from langgraph.runtime import Runtime
 
 from lyl_agent.models import create_chat_model
 from lyl_agent.settings import load_settings
-from lyl_agent.state import CounselContext, CounselMode, CounselState
+from lyl_agent.state import CounselContext, CounselMode, CounselScope, CounselState
 
 logger = logging.getLogger(__name__)
 
 COUNSEL_MODES = frozenset(get_args(CounselMode))
+COUNSEL_SCOPES = frozenset(get_args(CounselScope))
 STAGE_TITLES = {
     "intake": "读取议题",
     "mode_router": "判断模式",
@@ -31,12 +32,15 @@ def _append_stage(
     state: CounselState,
     stage: str,
     summary: str,
+    *,
+    reset_stages: bool = False,
     **updates: object,
 ) -> CounselState:
     """Return node updates with one completed stage for state streaming."""
 
+    previous_stages = [] if reset_stages else state.get("stages", [])
     stages = [
-        *state.get("stages", []),
+        *previous_stages,
         {
             "id": stage,
             "title": STAGE_TITLES[stage],
@@ -123,7 +127,14 @@ async def _run_node(
 
 async def intake(state: CounselState) -> CounselState:
     question = _latest_user_request(state)
-    return _append_stage(state, "intake", "已读取用户议题", raw_request=question)
+    return _append_stage(
+        state,
+        "intake",
+        "已读取用户议题",
+        reset_stages=True,
+        raw_request=question,
+        error=None,
+    )
 
 
 async def mode_router(
@@ -134,7 +145,7 @@ async def mode_router(
     context = runtime.context or {}
     updates: dict[str, object] = {"mode": mode}
     scope = context.get("scope")
-    if isinstance(scope, str) and scope in {"local", "global"}:
+    if isinstance(scope, str) and scope in COUNSEL_SCOPES:
         updates["scope"] = scope
     return _append_stage(state, "mode_router", f"已选择 {mode} 模式", **updates)
 
@@ -207,6 +218,12 @@ async def synthesize_counsel(
     )
 
 
+def _route_after_node(state: CounselState) -> Literal["continue", "end"]:
+    """Stop the run once a node has produced the shared degraded result."""
+
+    return "end" if state.get("error") else "continue"
+
+
 def build_graph(model: BaseChatModel | None = None) -> CompiledStateGraph:
     """Build the single counsel graph, optionally injecting a model for tests."""
 
@@ -235,10 +252,22 @@ def build_graph(model: BaseChatModel | None = None) -> CompiledStateGraph:
     builder.add_node("problem_reframe", run_problem_reframe)
     builder.add_node("synthesize_counsel", run_synthesize_counsel)
     builder.add_edge(START, "intake")
-    builder.add_edge("intake", "mode_router")
-    builder.add_edge("mode_router", "retrieve_context")
-    builder.add_edge("retrieve_context", "problem_reframe")
-    builder.add_edge("problem_reframe", "synthesize_counsel")
+    builder.add_conditional_edges(
+        "intake", _route_after_node, {"continue": "mode_router", "end": END}
+    )
+    builder.add_conditional_edges(
+        "mode_router", _route_after_node, {"continue": "retrieve_context", "end": END}
+    )
+    builder.add_conditional_edges(
+        "retrieve_context",
+        _route_after_node,
+        {"continue": "problem_reframe", "end": END},
+    )
+    builder.add_conditional_edges(
+        "problem_reframe",
+        _route_after_node,
+        {"continue": "synthesize_counsel", "end": END},
+    )
     builder.add_edge("synthesize_counsel", END)
     return builder.compile()
 

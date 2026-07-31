@@ -4,6 +4,16 @@ COS 是个人战略参谋 Agent「刘亚楼参谋台（LYL）」的产品与技�
 当前代码实现 Issue #4 的 Agent Graph 基线：官方 Agent Chat UI 前端和一个单主
 LangGraph 参谋图。该图支持五种模式、Run Context 优先路由、阶段状态与模型降级结果。
 
+### Issue #4 scope in this PR
+
+This baseline includes the five nodes named in Issue #4: `intake`, `mode_router`,
+`retrieve_context`, `problem_reframe`, and `synthesize_counsel`. It also reserves
+the complete `CounselState` shape required by the product specification.
+
+Interrupt/resume, external research execution, evidence review, red-team review,
+artifact rendering, and durable memory updates remain intentionally deferred to
+their dedicated follow-up issues.
+
 ## Repository layout
 
 ```text

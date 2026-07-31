@@ -34,17 +34,37 @@ class CounselState(TypedDict, total=False):
     """MVP state shared by all nodes in the single counsel graph."""
 
     messages: Annotated[list[AnyMessage], add_messages]
+    user_id: str
+    thread_id: str
     mode: CounselMode
-    scope: CounselScope
+    scope: CounselScope | None
     raw_request: str
     normalized_question: str
+    objectives: list[str]
+    constraints: list[str]
+    value_tradeoffs: list[str]
+    selected_memory_ids: list[str]
     context_snapshot: dict[str, object]
+    historical_patterns: list[dict[str, object]]
     needs_clarification: bool
     need_research: bool
-    current_stage: str
+    research_plan: dict[str, object] | None
+    evidence: list[dict[str, object]]
+    unresolved_unknowns: list[str]
+    main_contradiction: str | None
+    options: list[dict[str, object]]
+    opposition_view: list[str]
+    confidence: int | None
+    reconsider_when: list[str]
+    current_stage: str | None
     stages: list[CounselStage]
-    recommendation: dict[str, object]
-    error: str
+    recommendation: dict[str, object] | None
+    ui: list[dict[str, object]]
+    artifact: dict[str, object] | None
+    memory_proposals: list[dict[str, object]]
+    decision_record_id: str | None
+    feedback: dict[str, object] | None
+    error: str | None
 
 
 class CounselSkill(Protocol):

@@ -1,3 +1,4 @@
+from importlib import import_module
 from typing import cast
 
 import pytest
@@ -6,6 +7,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.runtime import Runtime
 
+import lyl_agent.models as models_module
 from lyl_agent.graph import (
     _run_node,
     build_graph,
@@ -15,6 +17,9 @@ from lyl_agent.graph import (
     retrieve_context,
     synthesize_counsel,
 )
+from lyl_agent.settings import Settings
+
+graph_module = import_module("lyl_agent.graph")
 
 
 @pytest.mark.asyncio
@@ -81,6 +86,54 @@ async def test_non_model_node_failure_returns_a_readable_degraded_response() -> 
 
     assert "暂时无法完成" in result["messages"][-1].content
     assert result["recommendation"]["kind"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_graph_stops_after_a_degraded_node(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def broken_retrieve_context(_state: object) -> object:
+        raise RuntimeError("context unavailable")
+
+    monkeypatch.setattr(
+        graph_module,
+        "retrieve_context",
+        broken_retrieve_context,
+    )
+    graph = build_graph(FakeListChatModel(responses=["must not be used"]))
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="帮我分析这个选择")]},
+        context={"mode": "discuss"},
+    )
+
+    assert result["recommendation"]["kind"] == "degraded"
+    assert [stage["id"] for stage in result["stages"]] == [
+        "intake",
+        "mode_router",
+        "synthesize_counsel",
+    ]
+    assert "normalized_question" not in result
+
+
+@pytest.mark.asyncio
+async def test_new_turn_resets_stage_progress_and_transient_error() -> None:
+    result = await intake(
+        {
+            "messages": [HumanMessage(content="重新分析")],
+            "stages": [
+                {
+                    "id": "synthesize_counsel",
+                    "title": "形成建议",
+                    "status": "completed",
+                }
+            ],
+            "error": "graph_unavailable",
+        }
+    )
+
+    assert [stage["id"] for stage in result["stages"]] == ["intake"]
+    assert result["error"] is None
 
 
 @pytest.mark.asyncio
@@ -178,3 +231,32 @@ async def test_model_failure_returns_a_readable_degraded_response() -> None:
 
     assert "暂时无法完成" in result["messages"][-1].content
     assert result["recommendation"]["kind"] == "degraded"
+
+
+@pytest.mark.asyncio
+async def test_provider_initialization_failure_returns_degraded_response(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = Settings(
+        _env_file=None,
+        model_provider="openai",
+        model="stale-model",
+        model_api_key="stale-key",
+    )
+
+    def fail_provider_init(**_options: object) -> object:
+        raise RuntimeError("provider integration unavailable")
+
+    monkeypatch.setattr(graph_module, "load_settings", lambda: settings)
+    monkeypatch.setattr(models_module, "init_chat_model", fail_provider_init)
+    graph = build_graph()
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="帮我分析这个选择")]},
+        context={"mode": "discuss"},
+    )
+
+    assert result["error"] == "graph_unavailable"
+    assert result["recommendation"]["kind"] == "degraded"
+    assert isinstance(result["messages"][-1], AIMessage)
+    assert "暂时无法完成" in result["messages"][-1].content
