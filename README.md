@@ -11,7 +11,8 @@ COS/
 ├── apps/
 │   ├── web/    # Agent Chat UI source baseline
 │   └── agent/  # Python 3.12 LangGraph service
-├── docs/       # PRD and SPEC
+├── design-system/ # ClauseOS UI implementation kit
+├── docs/       # PRD, SPEC, UI design and Codex handoff
 └── .github/workflows/ci.yml
 ```
 
@@ -170,3 +171,33 @@ formal counsel behavior are intentionally deferred.
 
 - [PRD V1.0](docs/LYL-参谋台-PRD-V1.0.md)
 - [SPEC V1.0](docs/LYL-参谋台-SPEC-V1.0.md)
+
+## ClauseOS desktop UI implementation
+
+Issue [#20](https://github.com/ttttstc/COS/issues/20) contains the Codex-ready
+implementation plan for the desktop-only ClauseOS issue workbench.
+
+Required design inputs:
+
+- [Original ClauseOS UI/UX specification](docs/design/reference/ClauseOS-UI-UX-Design-Spec-V2.0.md)
+- [LYL desktop implementation specification V2.0](docs/design/LYL-ClauseOS-Desktop-UI-Implementation-Spec-V2.0.md)
+- [Control inventory](docs/design/controls/CONTROL-INVENTORY.md)
+- [Control state and visual acceptance matrix](docs/design/controls/CONTROL-STATE-MATRIX.md)
+- [Design system implementation kit](design-system/README.md)
+- [Interactive control gallery](design-system/control-gallery.html)
+- [Interactive UCD prototype](docs/design/ucd/lyl-interactive-ucd.html)
+- [Codex handoff](docs/codex/CODEX-ISSUE-20-HANDOFF.md)
+
+GitHub does not execute the interactive HTML files in code view. Preview them
+from a checkout:
+
+```bash
+python -m http.server 8080
+```
+
+Then open:
+
+```text
+http://localhost:8080/design-system/control-gallery.html
+http://localhost:8080/docs/design/ucd/lyl-interactive-ucd.html
+```
