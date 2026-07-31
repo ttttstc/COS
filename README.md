@@ -123,6 +123,7 @@ Agent settings use the `LYL_` environment prefix:
 | `LYL_MODEL_API_KEY`  | Secret key; not needed for `stub`   |
 | `LYL_MODEL_BASE_URL` | Optional OpenAI-compatible endpoint |
 | `LYL_STUB_RESPONSE`  | Local no-key response               |
+| `LYL_MEMORY_DB_PATH` | Local SQLite structured-memory path |
 
 Example for an OpenAI model:
 
@@ -184,6 +185,26 @@ Manual refresh check:
 state while the Agent process is running, so browser refresh and URL reopen
 work. Restarting the Agent process clears local Threads. Durable production
 storage and migrations belong to later issues.
+
+Structured memory uses the separate SQLite file configured by
+`LYL_MEMORY_DB_PATH` and survives Agent restarts. The business API is mounted
+into the same LangGraph server. Through the Web proxy, its public paths are:
+
+```text
+GET/POST       /api/memories
+GET/PATCH/DELETE /api/memories/{id}
+POST           /api/memories/{id}/confirm
+POST           /api/memories/{id}/reject
+GET/POST       /api/decisions
+GET/PATCH/DELETE /api/decisions/{id}
+```
+
+Every business API request requires `X-User-ID`; all reads and writes are
+scoped to that value. This is the Issue #5 data-isolation boundary, not final
+authentication, which remains Issue #14 work. New memories always start as
+`candidate` and require the confirm endpoint before becoming `confirmed`.
+Until authentication is implemented, Web runs use the local identity
+`local-user`; use the same header value when managing context for the local UI.
 
 ## Upstream source
 

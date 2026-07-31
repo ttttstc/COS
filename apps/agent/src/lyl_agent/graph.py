@@ -1,16 +1,19 @@
 """Single LYL counsel graph with mode routing and safe MVP fallbacks."""
 
+import json
 import logging
 from collections.abc import Awaitable, Callable
+from functools import lru_cache
 from typing import Literal, cast, get_args
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
 
 from lyl_agent.models import create_chat_model
+from lyl_agent.memory import MemoryRepository
 from lyl_agent.settings import load_settings
 from lyl_agent.state import CounselContext, CounselMode, CounselScope, CounselState
 
@@ -26,6 +29,11 @@ STAGE_TITLES = {
     "synthesize_counsel": "形成建议",
 }
 CounselNode = Callable[..., Awaitable[CounselState]]
+
+
+@lru_cache(maxsize=4)
+def _memory_repository(database_path: str) -> MemoryRepository:
+    return MemoryRepository(database_path)
 
 
 def _append_stage(
@@ -86,6 +94,16 @@ def _context_mode(runtime: Runtime[CounselContext]) -> CounselMode | None:
     context = runtime.context or {}
     mode = context.get("mode")
     return cast(CounselMode, mode) if isinstance(mode, str) and mode in COUNSEL_MODES else None
+
+
+def _context_identity(
+    state: CounselState,
+    runtime: Runtime[CounselContext] | None,
+) -> tuple[str, str | None]:
+    context = (runtime.context or {}) if runtime else {}
+    user_id = context.get("user_id") or state.get("user_id") or "local-user"
+    thread_id = context.get("thread_id") or state.get("thread_id")
+    return str(user_id), str(thread_id) if thread_id else None
 
 
 def _is_clarification_needed(question: str) -> bool:
@@ -150,17 +168,49 @@ async def mode_router(
     return _append_stage(state, "mode_router", f"已选择 {mode} 模式", **updates)
 
 
-async def retrieve_context(state: CounselState) -> CounselState:
-    snapshot = {
-        "source": "not_configured",
-        "mode": state.get("mode", "discuss"),
-        "selected_memory_ids": [],
+async def retrieve_context(
+    state: CounselState,
+    runtime: Runtime[CounselContext] | None = None,
+    repository: MemoryRepository | None = None,
+) -> CounselState:
+    user_id, thread_id = _context_identity(state, runtime)
+    context = (runtime.context or {}) if runtime else {}
+    selected_memory_ids = context.get("selected_memory_ids")
+    if not (
+        isinstance(selected_memory_ids, list)
+        and all(isinstance(item, str) for item in selected_memory_ids)
+    ):
+        selected_memory_ids = None
+    active_repository = repository or _memory_repository(
+        str(load_settings().memory_db_path)
+    )
+    snapshot = active_repository.build_context_snapshot(
+        user_id,
+        query=state.get("raw_request"),
+        selected_memory_ids=selected_memory_ids,
+    )
+    snapshot_data = snapshot.model_dump(mode="json")
+    memory_ids = [
+        item["id"]
+        for group in ("goals", "matters", "patterns")
+        for item in snapshot_data[group]
+    ]
+    retrieved_count = sum(
+        len(snapshot_data[group])
+        for group in ("goals", "matters", "decisions", "patterns")
+    )
+    updates: dict[str, object] = {
+        "user_id": user_id,
+        "selected_memory_ids": memory_ids,
+        "context_snapshot": snapshot_data,
     }
+    if thread_id:
+        updates["thread_id"] = thread_id
     return _append_stage(
         state,
         "retrieve_context",
-        "当前 MVP 未接入持久化上下文",
-        context_snapshot=snapshot,
+        f"已恢复 {retrieved_count} 条结构化上下文",
+        **updates,
     )
 
 
@@ -208,7 +258,14 @@ async def synthesize_counsel(
         )
 
     active_model = model or create_chat_model(load_settings())
-    response = await active_model.ainvoke(state["messages"])
+    snapshot = state.get("context_snapshot", {})
+    context_message = SystemMessage(
+        content=(
+            "以下是可追溯的用户上下文。只在相关时使用；冲突项必须同时呈现，不得臆造。\n"
+            + json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
+        )
+    )
+    response = await active_model.ainvoke([context_message, *state["messages"]])
     return _append_stage(
         state,
         "synthesize_counsel",
@@ -224,7 +281,10 @@ def _route_after_node(state: CounselState) -> Literal["continue", "end"]:
     return "end" if state.get("error") else "continue"
 
 
-def build_graph(model: BaseChatModel | None = None) -> CompiledStateGraph:
+def build_graph(
+    model: BaseChatModel | None = None,
+    memory_repository: MemoryRepository | None = None,
+) -> CompiledStateGraph:
     """Build the single counsel graph, optionally injecting a model for tests."""
 
     async def run_intake(state: CounselState) -> CounselState:
@@ -236,8 +296,11 @@ def build_graph(model: BaseChatModel | None = None) -> CompiledStateGraph:
     ) -> CounselState:
         return await _run_node(state, mode_router, runtime)
 
-    async def run_retrieve_context(state: CounselState) -> CounselState:
-        return await _run_node(state, retrieve_context)
+    async def run_retrieve_context(
+        state: CounselState,
+        runtime: Runtime[CounselContext],
+    ) -> CounselState:
+        return await _run_node(state, retrieve_context, runtime, memory_repository)
 
     async def run_problem_reframe(state: CounselState) -> CounselState:
         return await _run_node(state, problem_reframe)

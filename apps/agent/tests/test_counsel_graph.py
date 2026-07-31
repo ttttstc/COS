@@ -4,7 +4,7 @@ from typing import cast
 import pytest
 from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langgraph.runtime import Runtime
 
 import lyl_agent.models as models_module
@@ -17,9 +17,84 @@ from lyl_agent.graph import (
     retrieve_context,
     synthesize_counsel,
 )
+from lyl_agent.memory import MemoryCreate, MemoryRepository, SourceRef
 from lyl_agent.settings import Settings
 
 graph_module = import_module("lyl_agent.graph")
+
+
+class RecordingModel:
+    def __init__(self) -> None:
+        self.messages: list[object] = []
+
+    async def ainvoke(self, messages: list[object]) -> AIMessage:
+        self.messages = messages
+        return AIMessage(content="response")
+
+
+@pytest.mark.asyncio
+async def test_graph_retrieves_user_scoped_context(tmp_path: object) -> None:
+    repository = MemoryRepository(tmp_path / "graph.sqlite3")  # type: ignore[operator]
+    for user_id, summary in (("user-a", "ship memory"), ("user-b", "private")):
+        item = repository.create_memory(
+            user_id,
+            MemoryCreate(
+                memory_type="goal",
+                content={"summary": summary},
+                source_refs=[
+                    SourceRef(
+                        source_type="chat",
+                        source_id=f"{user_id}-message",
+                    )
+                ],
+                confidence=0.8,
+            ),
+        )
+        repository.set_memory_status(user_id, item.id, "confirmed")
+    graph = build_graph(
+        FakeListChatModel(responses=["response"]),
+        memory_repository=repository,
+    )
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="下一步做什么")]},
+        context={"mode": "ask", "user_id": "user-a", "thread_id": "thread-1"},
+    )
+
+    assert result["user_id"] == "user-a"
+    assert result["thread_id"] == "thread-1"
+    assert result["context_snapshot"]["goals"][0]["content"] == {
+        "summary": "ship memory"
+    }
+    assert "private" not in str(result["context_snapshot"])
+
+
+@pytest.mark.asyncio
+async def test_graph_injects_context_snapshot_into_model_input(tmp_path: object) -> None:
+    repository = MemoryRepository(tmp_path / "graph.sqlite3")  # type: ignore[operator]
+    item = repository.create_memory(
+        "user-a",
+        MemoryCreate(
+            memory_type="goal",
+            content={"summary": "ship memory"},
+            source_refs=[SourceRef(source_type="chat", source_id="message-1")],
+            confidence=0.8,
+        ),
+    )
+    repository.set_memory_status("user-a", item.id, "confirmed")
+    model = RecordingModel()
+    graph = build_graph(
+        cast(BaseChatModel, model),
+        memory_repository=repository,
+    )
+
+    await graph.ainvoke(
+        {"messages": [HumanMessage(content="ship memory 后该做什么？")]},
+        context={"mode": "ask", "user_id": "user-a"},
+    )
+
+    assert isinstance(model.messages[0], SystemMessage)
+    assert "ship memory" in str(model.messages[0].content)
 
 
 @pytest.mark.asyncio

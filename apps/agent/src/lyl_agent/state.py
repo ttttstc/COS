@@ -26,6 +26,8 @@ class CounselContext(TypedDict, total=False):
 
     mode: CounselMode
     scope: CounselScope
+    user_id: str
+    thread_id: str
     selected_memory_ids: list[str]
     file_ids: list[str]
 

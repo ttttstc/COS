@@ -3,5 +3,8 @@
   "graphs": {
     "lyl_counsel_agent": "./src/lyl_agent/graph.py:graph"
   },
+  "http": {
+    "app": "./src/lyl_agent/api.py:app"
+  },
   "env": ".env"
 }
