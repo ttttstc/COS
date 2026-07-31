@@ -49,6 +49,7 @@ COS 是 pnpm + uv 双子项目 monorepo：`apps/web`（Next.js Agent Chat UI）�
 
 冒烟完整流程：终端 A `pnpm dev:agent`，终端 B `pnpm smoke`，通过输出
 `Smoke passed for thread <id>`。手动停止/刷新检查步骤见 README「Validation」。
+若 smoke 无法连接，先确认 `http://localhost:2024/ok` 返回 200，再检查 graph ID。
 
 ## 作用域说明
 
