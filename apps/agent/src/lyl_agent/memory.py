@@ -160,7 +160,11 @@ class DecisionRecord(StrictModel):
 
 
 class MemoryRepository:
-    """Small tenant-scoped repository; one SQLite connection per operation."""
+    """Small tenant-scoped repository; one SQLite connection per operation.
+
+    In-memory databases use a shared-cache URI plus an anchor connection so the
+    schema and rows survive the short-lived operation connections.
+    """
 
     def __init__(self, database_path: str | Path) -> None:
         self.database_path = (
@@ -168,13 +172,38 @@ class MemoryRepository:
             if str(database_path) == ":memory:"
             else str(Path(database_path).expanduser().resolve())
         )
+        self._database_uri: str | None = None
+        self._anchor_connection: sqlite3.Connection | None = None
+        if self.database_path == ":memory:":
+            self._database_uri = (
+                f"file:lyl-memory-{uuid4().hex}?mode=memory&cache=shared"
+            )
+            self._anchor_connection = sqlite3.connect(
+                self._database_uri,
+                timeout=5,
+                uri=True,
+            )
         if self.database_path != ":memory:":
             Path(self.database_path).parent.mkdir(parents=True, exist_ok=True)
         self._initialize()
 
+    def close(self) -> None:
+        """Release the anchor that keeps an in-memory database alive."""
+        anchor_connection = getattr(self, "_anchor_connection", None)
+        if anchor_connection is not None:
+            anchor_connection.close()
+            self._anchor_connection = None
+
+    def __del__(self) -> None:
+        self.close()
+
     @contextmanager
     def _connect(self) -> Iterator[sqlite3.Connection]:
-        connection = sqlite3.connect(self.database_path, timeout=5)
+        connection = sqlite3.connect(
+            self._database_uri or self.database_path,
+            timeout=5,
+            uri=self._database_uri is not None,
+        )
         connection.row_factory = sqlite3.Row
         try:
             yield connection
@@ -339,6 +368,7 @@ class MemoryRepository:
         statuses: list[MemoryStatus] | None = None,
         valid_from: datetime | None = None,
         valid_until: datetime | None = None,
+        as_of: datetime | None = None,
         limit: int = 100,
     ) -> list[MemoryItem]:
         clauses = ["user_id = ?"]
@@ -362,6 +392,10 @@ class MemoryRepository:
         if valid_until:
             clauses.append("valid_from <= ?")
             values.append(valid_until.isoformat())
+        if as_of:
+            clauses.append("valid_from <= ?")
+            clauses.append("(valid_until IS NULL OR valid_until >= ?)")
+            values.extend([as_of.isoformat(), as_of.isoformat()])
         values.append(max(1, min(limit, 100)))
         sql = f"""
             SELECT * FROM memory_items
@@ -371,6 +405,8 @@ class MemoryRepository:
                 WHEN 'candidate' THEN 1
                 WHEN 'stale' THEN 2
                 ELSE 3 END,
+                confidence DESC,
+                valid_from DESC,
                 updated_at DESC,
                 id
             LIMIT ?
@@ -606,6 +642,7 @@ class MemoryRepository:
         limit: int = 20,
     ) -> ContextSnapshot:
         limit = max(1, min(limit, 20))
+        generated_at = utc_now()
         if selected_memory_ids:
             selected = [
                 item
@@ -616,7 +653,12 @@ class MemoryRepository:
             decisions: list[DecisionRecord] = []
             relevant_ids = set(selected_memory_ids)
         else:
-            matched_memories = self.search_memories(user_id, query=query, limit=100)
+            matched_memories = self.search_memories(
+                user_id,
+                query=query,
+                as_of=generated_at,
+                limit=100,
+            )
             matched_decisions = self.search_decisions(user_id, query=query, limit=100)
             relevant_ids = {
                 item.id for item in [*matched_memories, *matched_decisions]
@@ -625,7 +667,11 @@ class MemoryRepository:
                 *matched_memories,
                 *(
                     item
-                    for item in self.search_memories(user_id, limit=100)
+                    for item in self.search_memories(
+                        user_id,
+                        as_of=generated_at,
+                        limit=100,
+                    )
                     if item.id not in relevant_ids
                 ),
             ]
@@ -652,6 +698,7 @@ class MemoryRepository:
         selected_refs = refs[:limit]
         excluded = [ref.id for ref in refs[limit:]]
         return ContextSnapshot(
+            generated_at=generated_at,
             goals=[ref for ref in selected_refs if ref.kind == "goal"],
             matters=[ref for ref in selected_refs if ref.kind == "matter"],
             decisions=[ref for ref in selected_refs if ref.kind == "decision"],

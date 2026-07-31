@@ -137,6 +137,23 @@ def test_memory_requires_source_and_starts_as_candidate() -> None:
         )
 
 
+def test_in_memory_repository_keeps_schema_and_rows_alive() -> None:
+    repository = MemoryRepository(":memory:")
+    created = repository.create_memory(
+        "user-a",
+        MemoryCreate(
+            memory_type="goal",
+            content={"summary": "in-memory context"},
+            source_refs=[source()],
+            confidence=0.8,
+        ),
+    )
+
+    assert repository.get_memory("user-a", created.id) == created
+    assert repository.search_memories("user-a")[0].id == created.id
+    repository.close()
+
+
 def test_conflicting_memories_are_not_silently_overwritten(
     repository: MemoryRepository,
 ) -> None:
@@ -224,6 +241,50 @@ def test_context_snapshot_is_user_scoped_and_limited_to_twenty(
     assert len(refs) == 20
     assert all(ref.user_id == "user-a" for ref in refs)
     assert "private user-b pattern" not in str(snapshot.model_dump())
+
+
+def test_context_snapshot_excludes_temporally_invalid_memories(
+    repository: MemoryRepository,
+) -> None:
+    now = datetime.now(UTC)
+    active = repository.create_memory(
+        "user-a",
+        MemoryCreate(
+            memory_type="goal",
+            content={"summary": "active"},
+            source_refs=[source("active")],
+            confidence=0.8,
+            valid_from=now - timedelta(days=1),
+        ),
+    )
+    expired = repository.create_memory(
+        "user-a",
+        MemoryCreate(
+            memory_type="goal",
+            content={"summary": "expired"},
+            source_refs=[source("expired")],
+            confidence=1.0,
+            valid_from=now - timedelta(days=3),
+            valid_until=now - timedelta(days=1),
+        ),
+    )
+    future = repository.create_memory(
+        "user-a",
+        MemoryCreate(
+            memory_type="goal",
+            content={"summary": "future"},
+            source_refs=[source("future")],
+            confidence=1.0,
+            valid_from=now + timedelta(days=1),
+        ),
+    )
+    for item in (active, expired, future):
+        repository.set_memory_status("user-a", item.id, "confirmed")
+
+    snapshot = repository.build_context_snapshot("user-a")
+    summaries = {ref.content["summary"] for ref in snapshot.goals}
+
+    assert summaries == {"active"}
 
 
 def test_cross_user_reads_and_writes_are_isolated(

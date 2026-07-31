@@ -33,7 +33,12 @@ class CounselContext(TypedDict, total=False):
 
 
 class CounselState(TypedDict, total=False):
-    """MVP state shared by all nodes in the single counsel graph."""
+    """MVP state shared by all nodes in the single counsel graph.
+
+    Issue #5 currently writes ``user_id``, ``thread_id``,
+    ``selected_memory_ids``, and ``context_snapshot`` during retrieval. The
+    remaining fields are SPEC §13 placeholders for later counsel modes.
+    """
 
     messages: Annotated[list[AnyMessage], add_messages]
     user_id: str

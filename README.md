@@ -206,6 +206,23 @@ authentication, which remains Issue #14 work. New memories always start as
 Until authentication is implemented, Web runs use the local identity
 `local-user`; use the same header value when managing context for the local UI.
 
+Issue #5's MVP snapshot contains goals, matters, decisions, and patterns.
+`constraints` is reserved in the schema but is not populated until a dedicated
+constraint-writing flow exists. Automatic snapshots include only memories that
+are valid at snapshot generation time; explicitly selected IDs remain available
+for historical decision records. Search is SQLite JSON text matching (without
+Chinese tokenization, embeddings, or semantic conflict clustering), and the
+status ordering is confirmed, candidate, stale, then rejected with confidence
+and validity recency as tie-breakers.
+
+The repository intentionally uses `CREATE TABLE IF NOT EXISTS` and does not
+ship schema migrations in this MVP. When a local SQLite schema must be reset,
+stop the Agent and remove the configured `LYL_MEMORY_DB_PATH` file before
+restarting it. Each operation opens a short-lived SQLite connection; this is
+appropriate for the local single-process MVP, while connection pooling and
+multi-worker tuning remain future work. `PATCH` cannot write `confirmed` or
+`rejected`; those transitions are explicit `/confirm` and `/reject` endpoints.
+
 ## Upstream source
 
 `apps/web` incorporates
