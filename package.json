@@ -9,7 +9,11 @@
     "typecheck": "pnpm --filter @cos/web typecheck",
     "test": "pnpm --filter @cos/web test",
     "test:ci": "pnpm --filter @cos/web test:ci",
-    "smoke": "pnpm --filter @cos/web smoke"
+    "smoke": "pnpm --filter @cos/web smoke",
+    "sync:agent": "uv sync --dev --directory apps/agent",
+    "test:agent": "uv run --directory apps/agent pytest",
+    "dev:agent": "uv run --directory apps/agent langgraph dev",
+    "test:all": "pnpm test:ci && pnpm test:agent"
   },
   "pnpm": {
     "overrides": {

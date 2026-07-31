@@ -1,0 +1,15 @@
+schema_version: 1
+module_path: ""
+title: LYL 参谋台 Monorepo 工程基线
+scope:
+    - README.md
+    - NOTICE.md
+    - .gitignore
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - .env.example
+    - LICENSE
+source_files: []
+depends_on: []
+related_to: []
