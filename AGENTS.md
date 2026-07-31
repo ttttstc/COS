@@ -51,6 +51,13 @@ COS 是 pnpm + uv 双子项目 monorepo：`apps/web`（Next.js Agent Chat UI）�
 `Smoke passed for thread <id>`。手动停止/刷新检查步骤见 README「Validation」。
 若 smoke 无法连接，先确认 `http://localhost:2024/ok` 返回 200，再检查 graph ID。
 
+## 不应做
+
+- 不把 `.qoder/` 生成快照当作源码或测试事实；冲突时以当前代码和测试为准。
+- 不读取 LangGraph `Runtime` 的私有属性或依赖未公开实现细节。
+- 不新增依赖而漏改对应 manifest 与 lockfile；仅在有明确兼容性或安全原因时增加
+  `pnpm.overrides`，并记录原因。
+
 ## 作用域说明
 
 - `apps/web` 与 `apps/agent` 各有嵌套 AGENTS.md，记录目录内约定；就近优先。
