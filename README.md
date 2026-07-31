@@ -1,8 +1,19 @@
 # COS
 
 COS 是个人战略参谋 Agent「刘亚楼参谋台（LYL）」的产品与技术设计仓库。
-当前代码实现 Issue #3 的产品入口：刘亚楼参谋台品牌、四种主动模式与自由讨论，
-底层保留 Agent Chat UI 和最小 LangGraph `messages` Agent。
+当前代码整合 Issue #3 的参谋台品牌入口与 Issue #4 的单主 Agent Graph：前端支持
+四种主动模式和自由讨论，Graph 支持五种模式、Run Context 优先路由、阶段状态与
+模型降级结果。
+
+### Issue #4 scope
+
+This baseline includes the five nodes named in Issue #4: `intake`, `mode_router`,
+`retrieve_context`, `problem_reframe`, and `synthesize_counsel`. It also reserves
+the complete `CounselState` shape required by the product specification.
+
+Interrupt/resume, external research execution, evidence review, red-team review,
+artifact rendering, and durable memory updates remain intentionally deferred to
+their dedicated follow-up issues.
 
 ## Repository layout
 
@@ -142,6 +153,8 @@ Agent:
 cd apps/agent
 uv run pytest
 ```
+
+测试覆盖五种模式、手动模式优先、自动模式判断、后续调研提示和模型故障降级。
 
 With the Agent server running, execute the repeatable Thread smoke test:
 

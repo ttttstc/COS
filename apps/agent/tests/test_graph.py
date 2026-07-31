@@ -11,7 +11,15 @@ from lyl_agent.settings import ModelConfigurationError, Settings, load_settings
 def test_graph_compiles_with_expected_nodes() -> None:
     compiled = build_graph(FakeListChatModel(responses=["ready"]))
 
-    assert set(compiled.get_graph().nodes) == {"__start__", "chat", "__end__"}
+    assert set(compiled.get_graph().nodes) == {
+        "__start__",
+        "intake",
+        "mode_router",
+        "retrieve_context",
+        "problem_reframe",
+        "synthesize_counsel",
+        "__end__",
+    }
 
 
 @pytest.mark.asyncio
