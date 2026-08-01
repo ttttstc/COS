@@ -111,8 +111,8 @@ DEFAULT_RECONSIDER_WHEN = [
 
 
 def _next_version(state: CounselState) -> int:
-    # Version numbers are monotonic across superseded revisions so history is
-    # stable even when a user continues from an older displayed version.
+    # Every finalized run receives the next monotonic version; superseding the
+    # previous final keeps history intact instead of rewriting its version.
     versions = state.get("artifact_versions", [])
     return max(
         (
@@ -181,23 +181,42 @@ def _decision_options(
             except Exception:
                 continue
     if not options:
-        options.append(
+        options = [
             DecisionOption(
-                id="recommended",
-                title="按当前建议推进",
-                summary=recommendation,
-            )
-        )
+                id="small-test",
+                title="先做最小可逆验证",
+                summary="用低成本行动验证当前建议的关键假设。",
+            ),
+            DecisionOption(
+                id="collect-evidence",
+                title="先补充关键证据",
+                summary="先补齐会改变方案排序的关键信息，再重新比较。",
+            ),
+        ]
     if len(options) == 1:
+        alternative_id = "collect-evidence" if options[0].id != "collect-evidence" else "small-test"
         options.append(
             DecisionOption(
-                id="defer",
-                title="暂缓并补充信息",
-                summary="先补充关键证据，再重新评估当前决定。",
+                id=alternative_id,
+                title=(
+                    "先补充关键证据"
+                    if alternative_id == "collect-evidence"
+                    else "先做最小可逆验证"
+                ),
+                summary=(
+                    "先补齐会改变方案排序的关键信息，再重新比较。"
+                    if alternative_id == "collect-evidence"
+                    else "用低成本行动验证当前建议的关键假设。"
+                ),
             )
         )
     options = options[:4]
-    return options, options[0].id
+    recommended = state.get("recommended_option_id")
+    if not isinstance(recommended, str) or recommended not in {
+        option.id for option in options
+    }:
+        recommended = options[0].id
+    return options, recommended
 
 
 def _research_fields(state: CounselState) -> tuple[list[str], list[str], list[str]]:
@@ -251,21 +270,26 @@ def _draft_card(state: CounselState) -> CounselCard:
     mode = state.get("mode", "discuss")
     question = state.get("normalized_question") or state.get("raw_request", "当前议题")
     contradiction = state.get("main_contradiction") or "正在识别当前议题的主要矛盾。"
-    confidence = state.get("confidence") or 60
+    confidence_value = state.get("confidence")
+    confidence = confidence_value if isinstance(confidence_value, (int, float)) else 60
     reconsider_when = state.get("reconsider_when") or DEFAULT_RECONSIDER_WHEN
     if mode == "decide":
+        options, recommended_option_id = _decision_options(
+            state,
+            state.get("recommendation_reason") or "正在形成建议。",
+        )
         return DecisionCard(
-            decision_question=question,
+            decision_question=state.get("decision_question") or question,
             objectives=state.get("objectives", []),
             constraints=state.get("constraints", []),
             main_contradiction=contradiction,
-            facts=[],
-            assumptions=[],
+            facts=state.get("facts", []),
+            assumptions=state.get("assumptions", []),
             unknowns=state.get("unresolved_unknowns", []),
-            options=[],
-            recommended_option_id="pending",
-            recommendation_reason="正在形成建议。",
-            opposition_view=[],
+            options=options,
+            recommended_option_id=recommended_option_id,
+            recommendation_reason=state.get("recommendation_reason") or "正在形成建议。",
+            opposition_view=state.get("opposition_view", []),
             confidence=confidence,
             reconsider_when=reconsider_when,
         )
@@ -292,14 +316,15 @@ def _draft_card(state: CounselState) -> CounselCard:
             reconsider_when=reconsider_when,
         )
     return NextActionCard(
+        scope=state.get("scope") if state.get("scope") in {"local", "global"} else "local",
         current_stage="形成建议",
         main_contradiction=contradiction,
-        action_title="正在形成建议",
-        action_description="参谋正在整理当前议题。",
-        completion_criteria=[],
-        why_now="等待分析完成。",
-        pause_or_stop=[],
-        assumptions=[],
+        action_title=state.get("action_title") or "先完成一个最小可逆动作",
+        action_description=state.get("action_description") or "参谋正在整理当前议题。",
+        completion_criteria=state.get("completion_criteria") or ["完成一次最小动作并记录结果"],
+        why_now="先用低成本行动获得真实反馈。",
+        pause_or_stop=state.get("pause_or_stop") or ["暂停同时推进多个方向。"],
+        assumptions=state.get("assumptions") or ["当前建议基于现有上下文，未执行外部调研。"],
         confidence=confidence,
         need_research=state.get("need_research", False),
         reconsider_when=reconsider_when,
@@ -339,12 +364,34 @@ def finalize_artifact(
     )
     card = draft.tabs.counsel
     if isinstance(card, NextActionCard):
-        card.action_title = recommendation
+        if state.get("scope") in {"local", "global"}:
+            card.scope = state["scope"]
+        card.current_stage = state.get("current_stage") or card.current_stage
+        card.main_contradiction = state.get("main_contradiction") or card.main_contradiction
+        card.completion_criteria = state.get("completion_criteria") or card.completion_criteria
+        card.pause_or_stop = state.get("pause_or_stop") or card.pause_or_stop
+        card.assumptions = state.get("assumptions") or card.assumptions
+        if state.get("confidence") is not None:
+            card.confidence = state["confidence"]
+        card.need_research = state.get("need_research", card.need_research)
+        card.reconsider_when = state.get("reconsider_when") or card.reconsider_when
+        card.action_title = state.get("action_title") or recommendation
         card.action_description = recommendation
         card.why_now = "这是当前信息下最值得优先推进的方向。"
     elif isinstance(card, DecisionCard):
+        card.decision_question = state.get("decision_question") or card.decision_question
+        card.objectives = state.get("objectives") or card.objectives
+        card.constraints = state.get("constraints") or card.constraints
+        card.main_contradiction = state.get("main_contradiction") or card.main_contradiction
+        card.facts = state.get("facts") or card.facts
+        card.assumptions = state.get("assumptions") or card.assumptions
+        card.unknowns = state.get("unresolved_unknowns") or card.unknowns
         card.options, card.recommended_option_id = _decision_options(state, recommendation)
         card.recommendation_reason = recommendation
+        card.opposition_view = state.get("opposition_view") or card.opposition_view
+        if state.get("confidence") is not None:
+            card.confidence = state["confidence"]
+        card.reconsider_when = state.get("reconsider_when") or card.reconsider_when
     elif isinstance(card, ResearchCard):
         card.recommendation = recommendation
     else:

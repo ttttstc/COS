@@ -15,10 +15,12 @@ const artifactValue = {
   change_reason: "关键约束发生变化",
   tabs: {
     counsel: {
+      scope: "local",
       current_stage: "形成建议",
       main_contradiction: "验证不足",
       action_title: "访谈用户",
       action_description: "先访谈五位真实用户",
+      completion_criteria: ["完成五次访谈并记录共同问题"],
       pause_or_stop: ["暂停扩展功能"],
       confidence: 74,
       reconsider_when: ["访谈结果与假设相反"],
@@ -50,6 +52,8 @@ describe("structured counsel artifact panels", () => {
     );
     expect(screen.getByText("先访谈五位真实用户")).toBeInTheDocument();
     expect(screen.getByText("74%")).toBeInTheDocument();
+    expect(screen.getByText("局部下一步")).toBeInTheDocument();
+    expect(screen.getByText("完成五次访谈并记录共同问题")).toBeInTheDocument();
     expect(screen.getByText(/改判原因：关键约束发生变化/)).toBeInTheDocument();
   });
 
@@ -109,5 +113,58 @@ describe("structured counsel artifact panels", () => {
     );
     expect(screen.getByText("建议卡格式异常")).toBeInTheDocument();
     expect(screen.getByText("先访谈五位真实用户")).toBeInTheDocument();
+  });
+
+  it("renders decision options and the opposition review", () => {
+    const artifact = parseCounselArtifact({
+      artifact_type: "decision",
+      title: "如何验证需求",
+      version: 1,
+      status: "final",
+      tabs: {
+        counsel: {
+          decision_question: "如何验证需求？",
+          main_contradiction: "速度与证据质量",
+          objectives: ["获得真实反馈"],
+          constraints: ["两周内"],
+          facts: ["已有候选用户"],
+          assumptions: ["用户愿意访谈"],
+          unknowns: ["是否愿意付费"],
+          options: [
+            {
+              id: "interview",
+              title: "先访谈",
+              summary: "快速理解需求",
+              benefits: ["成本低"],
+              costs: ["耗时"],
+              risks: ["样本偏差"],
+            },
+            {
+              id: "prototype",
+              title: "先做原型",
+              summary: "用行为反馈验证",
+              benefits: ["反馈真实"],
+              costs: ["成本高"],
+              risks: ["可能返工"],
+            },
+          ],
+          recommended_option_id: "interview",
+          recommendation_reason: "先访谈，因为可逆且直接减少关键未知。",
+          opposition_view: ["访谈结果可能高估付费意愿。"],
+          confidence: 78,
+          reconsider_when: ["连续访谈不支持"],
+        },
+      },
+    }).artifact!;
+    render(
+      <CounselPanel
+        fallbackState={{ messages: [] }}
+        artifact={artifact}
+      />,
+    );
+    expect(screen.getByText("先访谈")).toBeInTheDocument();
+    expect(screen.getByText("先做原型")).toBeInTheDocument();
+    expect(screen.getByText("反方审查")).toBeInTheDocument();
+    expect(screen.getByText("访谈结果可能高估付费意愿。")).toBeInTheDocument();
   });
 });

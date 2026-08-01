@@ -31,14 +31,18 @@ class CounselContext(TypedDict, total=False):
     selected_memory_ids: list[str]
     file_ids: list[str]
     value_tradeoffs: list[str]
+    options_from_user: list[str]
+    objectives: list[str]
+    constraints: list[str]
 
 
 class CounselState(TypedDict, total=False):
     """MVP state shared by all nodes in the single counsel graph.
 
-    Issue #5 currently writes ``user_id``, ``thread_id``,
-    ``selected_memory_ids``, and ``context_snapshot`` during retrieval. The
-    remaining fields are SPEC §13 placeholders for later counsel modes.
+    Issue #5 writes the retrieval fields (``user_id``, ``thread_id``,
+    ``selected_memory_ids``, and ``context_snapshot``); Issues #8 and #9 write
+    the ask/decide reasoning fields below. Other mode-specific fields remain
+    placeholders for their later Skills.
     """
 
     messages: Annotated[list[AnyMessage], add_messages]
@@ -51,6 +55,18 @@ class CounselState(TypedDict, total=False):
     objectives: list[str]
     constraints: list[str]
     value_tradeoffs: list[str]
+    problem_reason: str
+    candidate_actions: list[dict[str, object]]
+    selected_action_id: str
+    action_title: str
+    action_description: str
+    completion_criteria: list[str]
+    pause_or_stop: list[str]
+    facts: list[str]
+    assumptions: list[str]
+    decision_question: str
+    recommended_option_id: str
+    recommendation_reason: str
     selected_memory_ids: list[str]
     context_snapshot: dict[str, object]
     historical_patterns: list[dict[str, object]]

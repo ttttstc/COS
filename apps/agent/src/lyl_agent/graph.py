@@ -24,13 +24,23 @@ from lyl_agent.artifacts import (
 )
 from lyl_agent.models import create_chat_model
 from lyl_agent.memory import MemoryRepository
+from lyl_agent.reasoning import (
+    classify_problem,
+    contradiction_for,
+    default_decision_options,
+    infer_scope,
+    normalize_ask,
+    normalize_decide,
+    normalize_summary,
+    parse_json_object,
+    was_reported_now,
+)
 from lyl_agent.settings import load_memory_db_path, load_settings
-from lyl_agent.state import CounselContext, CounselMode, CounselScope, CounselState
+from lyl_agent.state import CounselContext, CounselMode, CounselState
 
 logger = logging.getLogger(__name__)
 
 COUNSEL_MODES = frozenset(get_args(CounselMode))
-COUNSEL_SCOPES = frozenset(get_args(CounselScope))
 STAGE_TITLES = {
     "intake": "读取议题",
     "mode_router": "判断模式",
@@ -42,6 +52,31 @@ STAGE_TITLES = {
 }
 MAX_ACTIVE_INTERRUPTS = 2
 CounselNode = Callable[..., Awaitable[CounselState]]
+
+
+def _reset_per_turn_fields() -> dict[str, object]:
+    """Clear derived counsel fields while preserving thread-level history."""
+
+    return {
+        "problem_reason": None,
+        "objectives": [],
+        "constraints": [],
+        "candidate_actions": [],
+        "selected_action_id": None,
+        "action_title": None,
+        "action_description": None,
+        "completion_criteria": [],
+        "pause_or_stop": [],
+        "facts": [],
+        "assumptions": [],
+        "decision_question": None,
+        "recommended_option_id": None,
+        "recommendation_reason": None,
+        "options": [],
+        "opposition_view": [],
+        "unresolved_unknowns": [],
+        "value_tradeoffs": [],
+    }
 
 
 @lru_cache(maxsize=4)
@@ -169,6 +204,7 @@ async def intake(state: CounselState) -> CounselState:
         reset_stages=True,
         raw_request=question,
         error=None,
+        **_reset_per_turn_fields(),
     )
 
 
@@ -178,15 +214,28 @@ async def mode_router(
 ) -> CounselState:
     mode = _context_mode(runtime) or _infer_mode(state.get("raw_request", ""))
     context = runtime.context or {}
-    updates: dict[str, object] = {"mode": mode}
-    scope = context.get("scope")
-    if isinstance(scope, str) and scope in COUNSEL_SCOPES:
-        updates["scope"] = scope
+    question = state.get("raw_request", "")
+    updates: dict[str, object] = {
+        "mode": mode,
+        "scope": infer_scope(question, context.get("scope")),
+    }
     value_tradeoffs = context.get("value_tradeoffs")
     if isinstance(value_tradeoffs, list) and all(
         isinstance(item, str) for item in value_tradeoffs
     ):
         updates["value_tradeoffs"] = value_tradeoffs
+    for field in ("objectives", "constraints"):
+        value = context.get(field)
+        if isinstance(value, list) and all(isinstance(item, str) for item in value):
+            updates[field] = [item.strip() for item in value if item.strip()]
+    options_from_user = context.get("options_from_user")
+    if isinstance(options_from_user, list) and all(
+        isinstance(item, str) for item in options_from_user
+    ):
+        updates["options"] = [
+            option.model_dump(mode="json")
+            for option in default_decision_options(question, options_from_user)
+        ]
     return _append_stage(state, "mode_router", f"已选择 {mode} 模式", **updates)
 
 
@@ -228,6 +277,7 @@ async def retrieve_context(
         "user_id": user_id,
         "selected_memory_ids": memory_ids,
         "context_snapshot": snapshot_data,
+        "historical_patterns": snapshot_data.get("patterns", []),
     }
     if thread_id:
         updates["thread_id"] = thread_id
@@ -243,7 +293,10 @@ async def problem_reframe(state: CounselState) -> CounselState:
     question = " ".join(state.get("raw_request", "").split())
     mode = state.get("mode", "discuss")
     clarification_needed = _is_clarification_needed(question)
-    research_needed = _needs_research(mode, question)
+    problem_reason = classify_problem(question, mode)
+    research_needed = _needs_research(mode, question) or (
+        mode == "ask" and problem_reason == "information_insufficient"
+    )
     research_plan = (
         {
             "title": "关键未知调研计划",
@@ -258,20 +311,27 @@ async def problem_reframe(state: CounselState) -> CounselState:
     contradiction = (
         "议题范围尚不足以支持可靠判断。"
         if clarification_needed
-        else "需要在行动速度与判断可靠性之间取得平衡。"
+        else contradiction_for(problem_reason, mode)
     )
-    return _append_stage(
-        state,
-        "problem_reframe",
-        "已判断问题复杂度",
-        normalized_question=question,
-        needs_clarification=clarification_needed,
-        need_research=research_needed,
-        main_contradiction=contradiction,
-        confidence=60 if clarification_needed or research_needed else 70,
-        reconsider_when=DEFAULT_RECONSIDER_WHEN,
-        research_plan=research_plan,
-    )
+    updates: dict[str, object] = {
+        "normalized_question": question,
+        "needs_clarification": clarification_needed,
+        "need_research": research_needed,
+        "problem_reason": problem_reason,
+        "main_contradiction": contradiction,
+        "confidence": 60 if clarification_needed or research_needed else 70,
+        "reconsider_when": DEFAULT_RECONSIDER_WHEN,
+        "research_plan": research_plan,
+        "unresolved_unknowns": (
+            ["哪些外部事实会实质改变当前判断"] if research_needed else []
+        ),
+    }
+    if mode == "decide" and not state.get("options"):
+        updates["options"] = [
+            option.model_dump(mode="json")
+            for option in default_decision_options(question)
+        ]
+    return _append_stage(state, "problem_reframe", "已判断问题复杂度", **updates)
 
 
 def _decision_interrupt(state: CounselState) -> dict[str, object] | None:
@@ -379,35 +439,131 @@ async def synthesize_counsel(
     )
     snapshot = state.get("context_snapshot", {})
     decisions = state.get("interrupt_decisions", [])
+    mode = state.get("mode", "discuss")
+    if mode == "ask":
+        output_contract = {
+            "scope": "local or global",
+            "current_stage": "short stage label",
+            "problem_reason": "goal_unclear | information_insufficient | too_many_options | action_resistance | no_clear_blocker",
+            "main_contradiction": "one sentence",
+            "candidate_actions": [
+                {
+                    "id": "stable-id",
+                    "title": "short action",
+                    "description": "action that can start now",
+                    "completion_criteria": ["observable done condition"],
+                    "impact": 0,
+                    "uncertainty_reduction": 0,
+                    "goal_contribution": 0,
+                    "executability": 0,
+                    "reversibility": 0,
+                    "opportunity_cost": 0,
+                }
+            ],
+            "selected_action_id": "stable-id",
+            "action_title": "one main action",
+            "action_description": "direct recommendation",
+            "completion_criteria": ["observable done condition"],
+            "pause_or_stop": ["what not to do yet"],
+            "assumptions": ["explicit assumption"],
+            "need_research": False,
+            "confidence": 0,
+            "reconsider_when": ["change condition"],
+        }
+    elif mode == "decide":
+        output_contract = {
+            "decision_question": "the underlying goal, not the user's proposed means",
+            "objectives": ["desired outcomes"],
+            "constraints": ["real constraints and bottom lines"],
+            "facts": ["only facts supported by context or user"],
+            "assumptions": ["explicit assumptions"],
+            "unknowns": ["key unknowns; do not invent facts"],
+            "main_contradiction": "one sentence",
+            "options": [
+                {
+                    "id": "stable-id",
+                    "title": "realistic option",
+                    "summary": "what it means",
+                    "benefits": ["benefit"],
+                    "costs": ["cost"],
+                    "risks": ["risk"],
+                }
+            ],
+            "recommended_option_id": "stable-id",
+            "recommendation_reason": "clear recommendation and why alternatives lose",
+            "opposition_view": ["strongest reasonable counterargument"],
+            "confidence": 0,
+            "reconsider_when": ["change condition"],
+        }
+    else:
+        output_contract = {"summary": "concise, directly displayable counsel"}
     context_message = SystemMessage(
         content=(
             "以下是可追溯的用户上下文。只在相关时使用；冲突项必须同时呈现，不得臆造。\n"
             + json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
             + "\n用户对本轮关键取舍的裁决："
             + json.dumps(decisions, ensure_ascii=False, separators=(",", ":"))
-            + "\n请给出简洁、明确、可直接展示的参谋建议。当前版本没有执行外部调研，不得声称已完成调研。"
+            + "\n历史模式（仅作可追溯参考）："
+            + json.dumps(
+                state.get("historical_patterns", []),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            + "\n当前用户请求（已清洗）："
+            + state.get("raw_request", "")
+            + "\nGraph 初步判断："
+            + json.dumps(
+                {
+                    "scope": state.get("scope"),
+                    "problem_reason": state.get("problem_reason"),
+                    "main_contradiction": state.get("main_contradiction"),
+                    "need_research": state.get("need_research"),
+                },
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
+            + "\n当前模式："
+            + mode
+            + "。请只返回一个 JSON 对象，不要 Markdown，不要私有思维链。"
+            + "正式字段契约："
+            + json.dumps(output_contract, ensure_ascii=False, separators=(",", ":"))
+            + "\n当前版本没有执行外部调研，不得声称已完成调研。"
         )
     )
     response = await active_model.ainvoke([context_message, *state["messages"]])
     response_text = _message_text(response.content).strip()
-    final, versions = finalize_artifact(state, response_text)
+    payload = parse_json_object(response_text)
+    if mode == "ask":
+        reasoning_updates, display_text = normalize_ask(state, payload, response_text)
+    elif mode == "decide":
+        reasoning_updates, display_text = normalize_decide(state, payload, response_text)
+    else:
+        reasoning_updates, display_text = {}, normalize_summary(payload, response_text)
+    enriched_state = cast(CounselState, {**state, **reasoning_updates})
+    final, versions = finalize_artifact(enriched_state, display_text)
     summary = artifact_summary(final)
     card = final.tabs.counsel
-    return _append_stage(
-        state,
-        "synthesize_counsel",
-        "已形成基础建议",
-        messages=[response],
-        recommendation={
+    # Keep provider-specific JSON out of the persisted chat transcript. The
+    # artifact retains the normalized structured fields for the UI.
+    stage_updates: dict[str, object] = {
+        **reasoning_updates,
+        "messages": [AIMessage(content=display_text)],
+        "recommendation": {
             "kind": "artifact",
-            "mode": state.get("mode", "discuss"),
+            "mode": mode,
             "summary": summary,
         },
-        main_contradiction=card.main_contradiction,
-        confidence=card.confidence,
-        reconsider_when=card.reconsider_when,
-        artifact=final.model_dump(mode="json"),
-        artifact_versions=versions,
+        "main_contradiction": card.main_contradiction,
+        "confidence": card.confidence,
+        "reconsider_when": card.reconsider_when,
+        "artifact": final.model_dump(mode="json"),
+        "artifact_versions": versions,
+    }
+    return _append_stage(
+        enriched_state,
+        "synthesize_counsel",
+        "已形成基础建议",
+        **stage_updates,
     )
 
 
@@ -415,6 +571,20 @@ def _route_after_node(state: CounselState) -> Literal["continue", "end"]:
     """Stop the run once a node has produced the shared degraded result."""
 
     return "end" if state.get("error") else "continue"
+
+
+def _route_after_synthesis(state: CounselState) -> Literal["continue", "end"]:
+    """Give model-discovered research needs the same approval gate as heuristics."""
+
+    if state.get("error"):
+        return "end"
+    if (
+        state.get("need_research")
+        and state.get("interrupt_count", 0) < MAX_ACTIVE_INTERRUPTS
+        and not was_reported_now(state)
+    ):
+        return "continue"
+    return "end"
 
 
 def build_graph(
@@ -482,7 +652,11 @@ def build_graph(
         _route_after_node,
         {"continue": "synthesize_counsel", "end": END},
     )
-    builder.add_edge("synthesize_counsel", END)
+    builder.add_conditional_edges(
+        "synthesize_counsel",
+        _route_after_synthesis,
+        {"continue": "request_decision", "end": END},
+    )
     return builder.compile(checkpointer=checkpointer)
 
 
