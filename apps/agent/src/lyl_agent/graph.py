@@ -139,6 +139,8 @@ def _degraded_result(state: CounselState, error: Exception) -> CounselState:
         "执行异常，已返回降级结果",
         messages=[AIMessage(content="暂时无法完成分析，请稍后重试或补充更多上下文。")],
         recommendation={"kind": "degraded"},
+        artifact=None,
+        artifact_versions=state.get("artifact_versions", []),
         error="graph_unavailable",
     )
 
@@ -167,8 +169,6 @@ async def intake(state: CounselState) -> CounselState:
         reset_stages=True,
         raw_request=question,
         error=None,
-        interrupt_count=0,
-        interrupt_decisions=[],
     )
 
 
@@ -182,6 +182,11 @@ async def mode_router(
     scope = context.get("scope")
     if isinstance(scope, str) and scope in COUNSEL_SCOPES:
         updates["scope"] = scope
+    value_tradeoffs = context.get("value_tradeoffs")
+    if isinstance(value_tradeoffs, list) and all(
+        isinstance(item, str) for item in value_tradeoffs
+    ):
+        updates["value_tradeoffs"] = value_tradeoffs
     return _append_stage(state, "mode_router", f"已选择 {mode} 模式", **updates)
 
 
@@ -288,10 +293,7 @@ def _decision_interrupt(state: CounselState) -> dict[str, object] | None:
             ],
             "recommended": "focused",
         }
-    question = state.get("normalized_question", "")
-    has_speed = any(word in question for word in ("速度", "尽快", "快速"))
-    has_certainty = any(word in question for word in ("确定性", "可靠", "稳妥"))
-    if state.get("mode") == "decide" and has_speed and has_certainty:
+    if state.get("mode") == "decide" and state.get("value_tradeoffs"):
         return {
             "type": "value_tradeoff",
             "question": "本次决定更优先速度还是确定性？",
@@ -309,7 +311,9 @@ def _decision_interrupt(state: CounselState) -> dict[str, object] | None:
             "key_unknowns": plan.get("key_unknowns", []),
             "proposed_angles": plan.get("proposed_angles", []),
             "stop_conditions": plan.get("stop_conditions", []),
-            "actions": ["approve", "modify", "report_now"],
+            # Research execution is owned by the later research Skill. Until it
+            # exists, only expose the honest "report with current information" path.
+            "actions": ["report_now"],
         }
     return None
 
@@ -393,7 +397,7 @@ async def synthesize_counsel(
         state,
         "synthesize_counsel",
         "已形成基础建议",
-        messages=[AIMessage(content=summary)],
+        messages=[response],
         recommendation={
             "kind": "artifact",
             "mode": state.get("mode", "discuss"),
@@ -439,7 +443,7 @@ def build_graph(
         return await _run_node(state, problem_reframe)
 
     async def run_request_decision(state: CounselState) -> CounselState:
-        return await request_decision(state)
+        return await _run_node(state, request_decision)
 
     async def run_prepare_artifact(state: CounselState) -> CounselState:
         return await _run_node(state, prepare_artifact)

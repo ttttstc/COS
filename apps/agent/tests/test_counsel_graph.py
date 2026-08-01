@@ -288,7 +288,7 @@ async def test_research_mode_requests_approval_without_external_tools() -> None:
 
     interrupt_value = result["__interrupt__"][0].value
     assert interrupt_value["type"] == "research_approval"
-    assert interrupt_value["actions"] == ["approve", "modify", "report_now"]
+    assert interrupt_value["actions"] == ["report_now"]
 
 
 class FailingModel:
@@ -307,6 +307,7 @@ async def test_model_failure_returns_a_readable_degraded_response() -> None:
 
     assert "暂时无法完成" in result["messages"][-1].content
     assert result["recommendation"]["kind"] == "degraded"
+    assert result.get("artifact") is None
 
 
 @pytest.mark.asyncio

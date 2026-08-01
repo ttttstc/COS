@@ -111,6 +111,8 @@ DEFAULT_RECONSIDER_WHEN = [
 
 
 def _next_version(state: CounselState) -> int:
+    # Version numbers are monotonic across superseded revisions so history is
+    # stable even when a user continues from an older displayed version.
     versions = state.get("artifact_versions", [])
     return max(
         (
@@ -120,6 +122,82 @@ def _next_version(state: CounselState) -> int:
         ),
         default=0,
     ) + 1
+
+
+def _artifact_evidence(records: object) -> list[dict[str, object]]:
+    """Keep only renderable evidence and normalize its display dimensions."""
+
+    if not isinstance(records, list):
+        return []
+    normalized: list[dict[str, object]] = []
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            continue
+        title = record.get("title") or record.get("claim") or record.get("name")
+        summary = record.get("summary") or record.get("description") or record.get("content")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        if not isinstance(summary, str) or not summary.strip():
+            continue
+        item = dict(record)
+        item["id"] = str(record.get("id") or f"evidence-{index}")
+        item["title"] = title.strip()
+        item["summary"] = summary.strip()
+        item["relation"] = (
+            record.get("relation")
+            if record.get("relation") in {"support", "oppose", "limit", "context"}
+            else "context"
+        )
+        item["relevance"] = (
+            record.get("relevance")
+            if record.get("relevance") in {"high", "medium", "low"}
+            else "medium"
+        )
+        item["freshness"] = (
+            record.get("freshness")
+            if record.get("freshness") in {"high", "medium", "low"}
+            else "medium"
+        )
+        source_name = record.get("source_name") or record.get("source")
+        item["source_name"] = (
+            source_name.strip() if isinstance(source_name, str) and source_name.strip() else "来源待补充"
+        )
+        normalized.append(item)
+    return normalized
+
+
+def _decision_options(
+    state: CounselState,
+    recommendation: str,
+) -> tuple[list[DecisionOption], str]:
+    options: list[DecisionOption] = []
+    raw_options = state.get("options", [])
+    if isinstance(raw_options, list):
+        for item in raw_options:
+            if not isinstance(item, dict):
+                continue
+            try:
+                options.append(DecisionOption.model_validate(item))
+            except Exception:
+                continue
+    if not options:
+        options.append(
+            DecisionOption(
+                id="recommended",
+                title="按当前建议推进",
+                summary=recommendation,
+            )
+        )
+    if len(options) == 1:
+        options.append(
+            DecisionOption(
+                id="defer",
+                title="暂缓并补充信息",
+                summary="先补充关键证据，再重新评估当前决定。",
+            )
+        )
+    options = options[:4]
+    return options, options[0].id
 
 
 def _research_fields(state: CounselState) -> tuple[list[str], list[str], list[str]]:
@@ -244,7 +322,7 @@ def build_draft_artifact(state: CounselState) -> CounselArtifact:
         ),
         tabs=ArtifactTabs(
             counsel=_draft_card(state),
-            evidence=state.get("evidence", []),
+            evidence=_artifact_evidence(state.get("evidence", [])),
             history=_history_records(snapshot),
             process=state.get("research_plan"),
         ),
@@ -256,21 +334,16 @@ def finalize_artifact(
     recommendation: str,
 ) -> tuple[CounselArtifact, list[dict[str, object]]]:
     raw = state.get("artifact")
-    draft = CounselArtifact.model_validate(raw) if raw else build_draft_artifact(state)
+    draft = (CounselArtifact.model_validate(raw) if raw else build_draft_artifact(state)).model_copy(
+        deep=True
+    )
     card = draft.tabs.counsel
     if isinstance(card, NextActionCard):
         card.action_title = recommendation
         card.action_description = recommendation
         card.why_now = "这是当前信息下最值得优先推进的方向。"
     elif isinstance(card, DecisionCard):
-        card.options = [
-            DecisionOption(
-                id="recommended",
-                title="参谋建议",
-                summary=recommendation,
-            )
-        ]
-        card.recommended_option_id = "recommended"
+        card.options, card.recommended_option_id = _decision_options(state, recommendation)
         card.recommendation_reason = recommendation
     elif isinstance(card, ResearchCard):
         card.recommendation = recommendation

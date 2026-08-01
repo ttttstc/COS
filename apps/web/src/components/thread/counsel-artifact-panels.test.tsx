@@ -76,7 +76,7 @@ describe("structured counsel artifact panels", () => {
     }).artifact!;
     render(
       <CounselPanel
-        value={{}}
+        fallbackState={{ messages: [] }}
         artifact={current}
         versions={[old, current]}
         onVersionChange={onVersionChange}
@@ -90,11 +90,24 @@ describe("structured counsel artifact panels", () => {
   it("degrades safely when the artifact schema is invalid", () => {
     render(
       <CounselPanel
-        value={{}}
+        fallbackState={{ messages: [] }}
         artifactError="next_action 建议卡 Schema 无效"
       />,
     );
     expect(screen.getByText("建议卡格式异常")).toBeInTheDocument();
     expect(screen.getByText(/已降级展示可用内容/)).toBeInTheDocument();
+  });
+
+  it("surfaces a partial schema error without hiding the valid artifact", () => {
+    const artifact = parseCounselArtifact(artifactValue).artifact!;
+    render(
+      <CounselPanel
+        fallbackState={{ messages: [] }}
+        artifact={artifact}
+        artifactError="evidence 字段不完整"
+      />,
+    );
+    expect(screen.getByText("建议卡格式异常")).toBeInTheDocument();
+    expect(screen.getByText("先访谈五位真实用户")).toBeInTheDocument();
   });
 });

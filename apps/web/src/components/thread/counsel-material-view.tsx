@@ -60,15 +60,7 @@ function getCounselMaterialCounts(
     "text",
   );
   return {
-    counsel:
-      state.main_contradiction ||
-      recommendationText ||
-      state.confidence !== undefined ||
-      state.reconsider_when?.length ||
-      artifact ||
-      state.error
-        ? 1
-        : 0,
+    counsel: recommendationText || artifact || state.error ? 1 : 0,
     evidence: artifact?.evidence.length ?? state.evidence?.length ?? 0,
     history:
       artifact?.history.length ??
@@ -108,7 +100,7 @@ export function createCounselMaterialView(
     panels: {
       counsel: (
         <CounselPanel
-          value={value}
+          fallbackState={state}
           artifact={artifact}
           artifactError={currentResult?.error}
           versions={selectableVersions}

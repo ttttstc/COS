@@ -15,6 +15,7 @@ import {
   parseCounselState,
   toMaterialTabs,
   type CounselRecord,
+  type CounselState,
 } from "@/lib/counsel-state";
 import type { CounselArtifactView } from "@/lib/counsel-artifact";
 
@@ -107,20 +108,20 @@ function ArtifactCard({ artifact }: ArtifactCardProps) {
 }
 
 export function CounselPanel({
-  value,
+  fallbackState,
   artifact,
   artifactError,
   versions = [],
   onVersionChange,
 }: {
-  value: unknown;
+  fallbackState: CounselState;
   artifact?: CounselArtifactView;
   artifactError?: string;
   versions?: CounselArtifactView[];
   onVersionChange?: (version?: number) => void;
 }) {
-  const state = parseCounselState(value);
-  const material = toMaterialTabs(value).find((tab) => tab.id === "counsel");
+  const state = fallbackState;
+  const material = toMaterialTabs(state).find((tab) => tab.id === "counsel");
   if (artifact) {
     const artifactStatus =
       artifact.status === "draft"
@@ -130,6 +131,14 @@ export function CounselPanel({
           : "旧版本";
     return (
       <div className="cos-material-stack">
+        {artifactError && (
+          <InlineAlert
+            tone="error"
+            title="建议卡格式异常"
+          >
+            {artifactError}，已降级展示可用内容。
+          </InlineAlert>
+        )}
         <div className="cos-artifact-version">
           <StatusBadge
             tone={

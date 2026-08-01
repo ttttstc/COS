@@ -3,13 +3,17 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
-from lyl_agent.artifacts import CounselArtifact
+from lyl_agent.artifacts import (
+    CounselArtifact,
+    DecisionCard,
+    build_draft_artifact,
+    finalize_artifact,
+)
 from lyl_agent.graph import build_graph, request_decision
 from lyl_agent.memory import MemoryRepository
 from lyl_agent.settings import load_settings
@@ -44,7 +48,14 @@ async def test_each_interrupt_type_pauses_and_survives_reload(
     result = await graph.ainvoke(
         {"messages": [HumanMessage(content=prompt)]},
         config,
-        context={"mode": mode},
+        context={
+            "mode": mode,
+            **(
+                {"value_tradeoffs": ["速度与确定性"]}
+                if kind == "value_tradeoff"
+                else {}
+            ),
+        },
     )
 
     assert result["__interrupt__"][0].value["type"] == kind
@@ -112,6 +123,31 @@ async def test_self_answerable_request_does_not_interrupt(tmp_path: Path) -> Non
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("prompt", ["北京人口是多少？", "我之前的定价判断是什么？"])
+async def test_other_self_answerable_requests_do_not_interrupt(
+    tmp_path: Path, prompt: str
+) -> None:
+    graph = graph_with_checkpoint(tmp_path, ["可直接回答"])
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content=prompt)]},
+        {"configurable": {"thread_id": f"thread-fact-{prompt}"}},
+        context={"mode": "discuss"},
+    )
+    assert "__interrupt__" not in result
+
+
+@pytest.mark.asyncio
+async def test_decide_without_explicit_tradeoff_does_not_interrupt(tmp_path: Path) -> None:
+    graph = graph_with_checkpoint(tmp_path, ["直接给出建议"])
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="请给出一个可执行的选择")]},
+        {"configurable": {"thread_id": "thread-decide-no-tradeoff"}},
+        context={"mode": "decide"},
+    )
+    assert "__interrupt__" not in result
+
+
+@pytest.mark.asyncio
 async def test_artifact_streams_draft_then_freezes_final(tmp_path: Path) -> None:
     graph = graph_with_checkpoint(tmp_path, ["Do the smallest useful validation."])
     config = {"configurable": {"thread_id": "thread-artifact-stream"}}
@@ -155,6 +191,30 @@ async def test_new_artifact_version_preserves_and_supersedes_old_version(tmp_pat
     ]
     assert result["artifact"]["change_reason"]
     assert result["messages"][-1].content == result["recommendation"]["summary"]
+
+
+def test_decision_artifact_keeps_two_options_and_normalizes_evidence() -> None:
+    state = {
+        "mode": "decide",
+        "raw_request": "该选择哪个方案？",
+        "evidence": [
+            {
+                "title": "一条证据",
+                "summary": "证据摘要",
+                "relation": "invalid",
+                "relevance": "invalid",
+                "source_name": "",
+            }
+        ],
+    }
+    draft = build_draft_artifact(state)
+    assert draft.tabs.evidence[0]["relation"] == "context"
+    assert draft.tabs.evidence[0]["relevance"] == "medium"
+    assert draft.tabs.evidence[0]["source_name"] == "来源待补充"
+
+    final, _ = finalize_artifact(state | {"artifact": draft.model_dump(mode="json")}, "选择方案 A")
+    assert isinstance(final.tabs.counsel, DecisionCard)
+    assert len(final.tabs.counsel.options) >= 2
 
 
 @pytest.mark.live

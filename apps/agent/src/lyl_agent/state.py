@@ -30,6 +30,7 @@ class CounselContext(TypedDict, total=False):
     thread_id: str
     selected_memory_ids: list[str]
     file_ids: list[str]
+    value_tradeoffs: list[str]
 
 
 class CounselState(TypedDict, total=False):

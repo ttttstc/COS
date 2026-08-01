@@ -54,4 +54,10 @@ describe("CounselMaterials research panel", () => {
       screen.queryByRole("list", { name: "调研过程" }),
     ).not.toBeInTheDocument();
   });
+
+  it("does not badge counsel for confidence without a recommendation", () => {
+    expect(createCounselMaterialView({ confidence: 60 }).counts.counsel).toBe(
+      0,
+    );
+  });
 });
