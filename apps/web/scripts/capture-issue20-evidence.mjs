@@ -28,6 +28,9 @@ for (const filename of [
   "workbench-960-desktop-only.png",
   "control-gallery-command-palette.png",
   "control-gallery-filter-popover.png",
+  "control-gallery-icon-states.png",
+  "control-gallery-table.png",
+  "control-gallery-avatars.png",
   "control-gallery-modal.png",
   "control-gallery-toast.png",
   "control-gallery-keyboard-focus.png",
@@ -213,7 +216,40 @@ await capture({
   label: "Filter popover",
   prepare: async (page) => {
     await page.locator("#overlays").scrollIntoViewIfNeeded();
-    await page.getByRole("checkbox", { name: "调研中" }).waitFor();
+    await page.getByRole("checkbox", { name: "方案设计" }).waitFor();
+  },
+  route: "/control-gallery",
+  viewport: desktop1440,
+});
+
+await capture({
+  filename: "control-gallery-icon-states.png",
+  label: "Icon visual states",
+  prepare: async (page) => {
+    await page.locator("#actions").scrollIntoViewIfNeeded();
+    await page.getByRole("group", { name: "图标按钮状态矩阵" }).waitFor();
+  },
+  route: "/control-gallery",
+  viewport: desktop1440,
+});
+
+await capture({
+  filename: "control-gallery-table.png",
+  label: "Glass table",
+  prepare: async (page) => {
+    await page.locator("#data").scrollIntoViewIfNeeded();
+    await page.getByRole("table", { name: "议题列表" }).waitFor();
+  },
+  route: "/control-gallery",
+  viewport: desktop1440,
+});
+
+await capture({
+  filename: "control-gallery-avatars.png",
+  label: "Avatar system",
+  prepare: async (page) => {
+    await page.locator("#feedback").scrollIntoViewIfNeeded();
+    await page.getByRole("group", { name: "头像在线状态矩阵" }).waitFor();
   },
   route: "/control-gallery",
   viewport: desktop1440,

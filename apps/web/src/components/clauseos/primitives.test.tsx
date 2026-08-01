@@ -1,7 +1,33 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { DesktopOnlyGuard, SplitHandle } from "./primitives";
+import { DesktopOnlyGuard, GlassSurface, SplitHandle } from "./primitives";
+
+describe("GlassSurface", () => {
+  it("exposes an optical profile and renders independent physical layers", () => {
+    render(
+      <GlassSurface
+        optics="palette"
+        prismCorners={["top-right", "bottom-right"]}
+        sweep="dual"
+      >
+        命令面板
+      </GlassSurface>,
+    );
+
+    const surface = screen.getByText("命令面板").closest(".lyl-glass-surface");
+    expect(surface).toHaveAttribute("data-optics", "palette");
+    expect(surface?.querySelector(".lyl-silver-physical-edge")).toBeTruthy();
+    expect(surface?.querySelector(".lyl-glass-caustic")).toBeTruthy();
+    expect(surface?.querySelector(".lyl-glass-caustic")).toHaveAttribute(
+      "data-sweep",
+      "dual",
+    );
+    expect(surface?.querySelectorAll(".lyl-prism-corner-light")).toHaveLength(
+      2,
+    );
+  });
+});
 
 describe("SplitHandle", () => {
   it("exposes separator values and converts arrow keys to resize steps", () => {

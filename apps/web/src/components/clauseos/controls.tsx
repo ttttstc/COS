@@ -33,7 +33,12 @@ import React, {
 } from "react";
 
 import { cn } from "@/lib/utils";
-import { GlassSurface, StatusDot, type StatusDotStatus } from "./primitives";
+import {
+  GlassSurface,
+  StatusDot,
+  type GlassSweep,
+  type StatusDotStatus,
+} from "./primitives";
 
 export type ButtonVariant =
   "primary" | "secondary" | "ghost" | "danger" | "text";
@@ -163,6 +168,8 @@ export function SplitButton({
         </summary>
         <GlassSurface
           level="regular"
+          optics="popover"
+          prismCorners={["bottom-right"]}
           className="cos-menu"
           role="menu"
         >
@@ -1017,9 +1024,15 @@ export function Accordion({
 
 export function Tooltip({
   label,
+  title,
+  side = "top",
+  open = false,
   children,
 }: {
-  label: string;
+  label: React.ReactNode;
+  title?: React.ReactNode;
+  side?: "top" | "right" | "bottom" | "left";
+  open?: boolean;
   children: React.ReactElement;
 }) {
   const id = useId();
@@ -1032,16 +1045,37 @@ export function Tooltip({
       )
     : children;
   return (
-    <div className="cos-tooltip">
+    <div
+      className="cos-tooltip"
+      data-side={side}
+      data-open={open || undefined}
+    >
       {child}
-      <GlassSurface
-        level="regular"
+      <div
         id={id}
         role="tooltip"
-        className="cos-tooltip__content"
+        className="cos-tooltip__floating"
       >
-        {label}
-      </GlassSurface>
+        <GlassSurface
+          level="regular"
+          optics="popover"
+          prismCorners={["bottom-right"]}
+          className="cos-tooltip__content"
+        >
+          {title ? (
+            <span className="cos-tooltip__copy">
+              <strong>{title}</strong>
+              <span>{label}</span>
+            </span>
+          ) : (
+            label
+          )}
+        </GlassSurface>
+        <span
+          className="cos-tooltip__arrow"
+          aria-hidden="true"
+        />
+      </div>
     </div>
   );
 }
@@ -1049,24 +1083,29 @@ export function Tooltip({
 export interface PopoverProps {
   label: React.ReactNode;
   children: React.ReactNode;
+  ariaHasPopup?: React.AriaAttributes["aria-haspopup"];
   align?: "start" | "end";
   defaultOpen?: boolean;
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  sweep?: GlassSweep;
 }
 
 export function Popover({
   label,
   children,
+  ariaHasPopup,
   align = "start",
   defaultOpen = false,
   disabled = false,
   loading = false,
   className,
+  sweep = "top-left",
 }: PopoverProps) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const blocked = disabled || loading;
+  const skipInitialOpenFocusRef = useRef(defaultOpen && !blocked);
 
   return (
     <details
@@ -1075,11 +1114,30 @@ export function Popover({
       open={defaultOpen && !blocked}
       aria-busy={loading || undefined}
       data-loading={loading || undefined}
-      onToggle={() => {
-        if (blocked && detailsRef.current) detailsRef.current.open = false;
+      onToggle={(event) => {
+        if (blocked) {
+          event.currentTarget.open = false;
+          return;
+        }
+        if (!event.currentTarget.open) {
+          skipInitialOpenFocusRef.current = false;
+          return;
+        }
+        if (skipInitialOpenFocusRef.current) {
+          skipInitialOpenFocusRef.current = false;
+          return;
+        }
+        if (event.currentTarget.open) {
+          event.currentTarget
+            .querySelector<HTMLElement>(
+              '[role="menuitemradio"][aria-checked="true"]',
+            )
+            ?.focus();
+        }
       }}
     >
       <summary
+        aria-haspopup={ariaHasPopup}
         aria-disabled={blocked || undefined}
         tabIndex={blocked ? -1 : undefined}
         onClick={(event) => {
@@ -1105,16 +1163,39 @@ export function Popover({
       </summary>
       <GlassSurface
         level="regular"
+        optics="popover"
+        prismCorners={["bottom-right"]}
+        sweep={sweep}
         className="cos-popover__content"
       >
         {children}
       </GlassSurface>
+      <span
+        className="cos-popover__arrow"
+        aria-hidden="true"
+      />
     </details>
   );
 }
 
-export const FilterPopover = Popover;
-export const ContextPopover = Popover;
+export function FilterPopover({ className, ...props }: PopoverProps) {
+  return (
+    <Popover
+      className={cn("cos-filter-popover", className)}
+      sweep="dual"
+      {...props}
+    />
+  );
+}
+
+export function ContextPopover({ className, ...props }: PopoverProps) {
+  return (
+    <Popover
+      className={cn("cos-context-popover", className)}
+      {...props}
+    />
+  );
+}
 
 export function OverflowMenu({
   label = "更多操作",
@@ -1270,6 +1351,9 @@ export function CommandPalette({
         <DialogPrimitive.Content asChild>
           <GlassSurface
             level="thick"
+            optics="palette"
+            prismCorners={["top-right", "bottom-right"]}
+            sweep="dual"
             className="cos-command-palette"
             aria-describedby={undefined}
           >
@@ -1353,6 +1437,24 @@ export function CommandPalette({
                 />
               )}
             </div>
+            <div
+              className="cos-command-palette__footer"
+              aria-hidden="true"
+            >
+              <span>
+                <Keycap>↑</Keycap>
+                <Keycap>↓</Keycap>
+                选择
+              </span>
+              <span>
+                <Keycap>↵</Keycap>
+                打开
+              </span>
+              <span>
+                <Keycap>Esc</Keycap>
+                关闭
+              </span>
+            </div>
           </GlassSurface>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
@@ -1387,6 +1489,9 @@ export function Modal({
         <DialogPrimitive.Content asChild>
           <GlassSurface
             level="thick"
+            optics="palette"
+            prismCorners={["top-right", "bottom-right"]}
+            sweep="dual"
             className={cn("cos-modal", danger && "cos-modal--danger")}
           >
             <div className="cos-modal__header">
@@ -1499,6 +1604,9 @@ export function Toast({
   return (
     <GlassSurface
       level="regular"
+      optics="popover"
+      prismCorners={["bottom-right"]}
+      sweep="top-left"
       className="cos-toast"
       role="status"
       aria-live="polite"
@@ -1543,12 +1651,20 @@ export function Table({
   className?: string;
 }) {
   return (
-    <div className={cn("cos-table-wrap", className)}>
-      <table className="cos-table">
-        <caption className="sr-only">{caption}</caption>
-        {children}
-      </table>
-    </div>
+    <GlassSurface
+      level="clear"
+      optics="table"
+      prismCorners={["top-right", "bottom-right"]}
+      sweep="dual"
+      className={cn("cos-table-shell", className)}
+    >
+      <div className="cos-table-wrap">
+        <table className="cos-table">
+          <caption className="sr-only">{caption}</caption>
+          {children}
+        </table>
+      </div>
+    </GlassSurface>
   );
 }
 
@@ -1644,21 +1760,44 @@ export function Pagination({
   );
 }
 
+export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
+export type AvatarPresence = "online" | "busy" | "offline" | "away" | "unknown";
+
+const AVATAR_PRESENCE_LABELS: Record<AvatarPresence, string> = {
+  online: "在线",
+  busy: "忙碌",
+  offline: "离线",
+  away: "暂离",
+  unknown: "状态未知",
+};
+
+export interface AvatarProps {
+  src?: string;
+  alt: string;
+  initials: string;
+  size?: AvatarSize;
+  presence?: AvatarPresence;
+  /** @deprecated Use presence="online" or presence="offline". */
+  online?: boolean;
+}
+
 export function Avatar({
   src,
   alt,
   initials,
   size = "md",
+  presence,
   online,
-}: {
-  src?: string;
-  alt: string;
-  initials: string;
-  size?: "sm" | "md" | "lg";
-  online?: boolean;
-}) {
+}: AvatarProps) {
+  const resolvedPresence =
+    presence ??
+    (online === undefined ? undefined : online ? "online" : "offline");
+
   return (
-    <span className={cn("cos-avatar", `cos-avatar--${size}`)}>
+    <span
+      className={cn("cos-avatar", `cos-avatar--${size}`)}
+      data-presence={resolvedPresence}
+    >
       {src ? (
         <img
           src={src}
@@ -1667,12 +1806,64 @@ export function Avatar({
       ) : (
         <span aria-label={alt}>{initials}</span>
       )}
-      {online !== undefined && (
+      {resolvedPresence && (
         <span
-          className={cn("cos-presence", online && "cos-presence--online")}
+          className={
+            resolvedPresence === "unknown"
+              ? "lyl-visually-hidden"
+              : "cos-presence"
+          }
+          data-presence={resolvedPresence}
           role="img"
-          aria-label={online ? "在线" : "离线"}
+          aria-label={AVATAR_PRESENCE_LABELS[resolvedPresence]}
         />
+      )}
+    </span>
+  );
+}
+
+export interface AvatarStackMember extends Omit<
+  AvatarProps,
+  "online" | "presence" | "size"
+> {
+  id: string;
+}
+
+export function AvatarStack({
+  members,
+  max = 3,
+  size = "md",
+  label = "团队成员",
+}: {
+  members: AvatarStackMember[];
+  max?: number;
+  size?: Extract<AvatarSize, "sm" | "md" | "lg">;
+  label?: string;
+}) {
+  const visible = members.slice(0, Math.max(1, max));
+  const remaining = Math.max(0, members.length - visible.length);
+
+  return (
+    <span
+      className="cos-avatar-stack"
+      role="group"
+      aria-label={label}
+      data-size={size}
+    >
+      {visible.map((member) => (
+        <Avatar
+          key={member.id}
+          {...member}
+          size={size}
+        />
+      ))}
+      {remaining > 0 && (
+        <span
+          className={cn("cos-avatar-stack__overflow", `cos-avatar--${size}`)}
+          aria-label={`另有 ${remaining} 位成员`}
+        >
+          +{remaining}
+        </span>
       )}
     </span>
   );

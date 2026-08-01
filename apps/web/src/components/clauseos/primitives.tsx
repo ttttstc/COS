@@ -9,6 +9,16 @@ import { cn } from "@/lib/utils";
 
 export type GlassLevel = "clear" | "thin" | "regular" | "thick";
 export type PrismCorner = "top-right" | "bottom-right";
+export type GlassSweep = "none" | "top-left" | "bottom-right-arc" | "dual";
+export type GlassOptics =
+  | "minimal"
+  | "control"
+  | "row"
+  | "popover"
+  | "panel"
+  | "palette"
+  | "shell"
+  | "table";
 
 export const AmbientWhiteWash = forwardRef<
   HTMLDivElement,
@@ -64,7 +74,7 @@ export const SilverPhysicalEdge = forwardRef<
 SilverPhysicalEdge.displayName = "SilverPhysicalEdge";
 
 interface EdgeWhiteSweepProps extends HTMLAttributes<HTMLSpanElement> {
-  edge?: "top" | "left";
+  edge?: "top" | "right" | "bottom" | "left";
 }
 
 export const EdgeWhiteSweep = forwardRef<HTMLSpanElement, EdgeWhiteSweepProps>(
@@ -98,13 +108,34 @@ export const PrismCornerLight = forwardRef<
 ));
 PrismCornerLight.displayName = "PrismCornerLight";
 
+interface GlassCausticRefractionProps extends HTMLAttributes<HTMLSpanElement> {
+  sweep?: GlassSweep;
+}
+
+export const GlassCausticRefraction = forwardRef<
+  HTMLSpanElement,
+  GlassCausticRefractionProps
+>(({ sweep = "dual", className, ...props }, ref) => (
+  <span
+    ref={ref}
+    className={cn("lyl-glass-caustic", className)}
+    data-sweep={sweep}
+    {...props}
+    aria-hidden="true"
+  />
+));
+GlassCausticRefraction.displayName = "GlassCausticRefraction";
+
 export interface GlassSurfaceProps extends HTMLAttributes<HTMLDivElement> {
   active?: boolean;
   decorated?: boolean;
   disabled?: boolean;
   interactive?: boolean;
   level?: GlassLevel;
+  optics?: GlassOptics;
   prismCorner?: PrismCorner;
+  prismCorners?: PrismCorner[];
+  sweep?: GlassSweep;
 }
 
 export const GlassSurface = forwardRef<HTMLDivElement, GlassSurfaceProps>(
@@ -117,31 +148,46 @@ export const GlassSurface = forwardRef<HTMLDivElement, GlassSurfaceProps>(
       disabled = false,
       interactive = false,
       level = "regular",
+      optics = "panel",
       prismCorner = "top-right",
+      prismCorners,
+      sweep = "top-left",
       ...props
     },
     ref,
-  ) => (
-    <div
-      ref={ref}
-      className={cn("lyl-glass-surface", className)}
-      data-active={active || undefined}
-      data-disabled={disabled || undefined}
-      data-interactive={interactive || undefined}
-      data-level={level}
-      aria-disabled={disabled || undefined}
-      {...props}
-    >
-      {decorated && (
-        <>
-          <SilverPhysicalEdge />
-          <EdgeWhiteSweep />
-          <PrismCornerLight corner={prismCorner} />
-        </>
-      )}
-      <div className="lyl-glass-surface__content">{children}</div>
-    </div>
-  ),
+  ) => {
+    const resolvedPrismCorners = prismCorners ?? [prismCorner];
+
+    return (
+      <div
+        ref={ref}
+        className={cn("lyl-glass-surface", className)}
+        data-active={active || undefined}
+        data-disabled={disabled || undefined}
+        data-interactive={interactive || undefined}
+        data-level={level}
+        data-optics={optics}
+        aria-disabled={disabled || undefined}
+        {...props}
+      >
+        {decorated && (
+          <>
+            <SilverPhysicalEdge />
+            <GlassCausticRefraction sweep={sweep} />
+            <EdgeWhiteSweep />
+            <EdgeWhiteSweep edge="left" />
+            {resolvedPrismCorners.map((corner) => (
+              <PrismCornerLight
+                key={corner}
+                corner={corner}
+              />
+            ))}
+          </>
+        )}
+        <div className="lyl-glass-surface__content">{children}</div>
+      </div>
+    );
+  },
 );
 GlassSurface.displayName = "GlassSurface";
 

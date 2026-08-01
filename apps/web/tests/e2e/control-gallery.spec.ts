@@ -95,12 +95,21 @@ test.describe("ClauseOS Control Gallery", () => {
     const data = page.locator("#data");
     const table = data.getByRole("table", { name: "议题列表" });
     await expect(table.getByRole("columnheader")).toHaveText([
+      "全选议题",
       "议题",
-      "模式",
+      "负责人",
       "状态",
-      "更新时间",
+      "优先级",
+      "截止日期",
       "操作",
     ]);
+    const firstSelection = table.getByRole("checkbox", {
+      name: "选择个人参谋产品第一版如何切入",
+    });
+    await expect(firstSelection).toBeChecked();
+    await firstSelection.focus();
+    await page.keyboard.press("Space");
+    await expect(firstSelection).not.toBeChecked();
     await expect(
       data.getByRole("list", { name: "议题关键时间线" }),
     ).toHaveCount(1);
@@ -210,15 +219,56 @@ test.describe("ClauseOS Control Gallery", () => {
   });
 
   test("filter popover is keyboard-operable", async ({ page }) => {
-    const trigger = page.getByText("筛选议题", { exact: true });
-    const running = page.getByRole("checkbox", { name: "调研中" });
+    const trigger = page.locator(".cos-filter-popover > summary");
+    const design = page.getByRole("checkbox", { name: "方案设计" });
 
-    await expect(running).toBeVisible();
+    await expect(design).toBeVisible();
     await trigger.click();
-    await expect(running).toBeHidden();
+    await expect(design).toBeHidden();
     await trigger.focus();
     await page.keyboard.press("Enter");
-    await expect(running).toBeVisible();
+    await expect(design).toBeVisible();
+    await page.getByRole("button", { name: "显示更多" }).click();
+    await expect(
+      page.getByRole("checkbox", { name: "决策记录" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "应用筛选" }).click();
+    await expect(design).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await expect(
+      page.locator('.cos-gallery__popover-stage--filter [role="status"]'),
+    ).toHaveText("已应用 1 个类别筛选");
+
+    await trigger.click();
+    await page.getByRole("button", { name: "重置" }).click();
+    await expect(design).not.toBeChecked();
+    await expect(
+      page.locator('.cos-gallery__popover-stage--filter [role="status"]'),
+    ).toHaveText("筛选条件已重置");
+  });
+
+  test("assignee menu uses roving focus and keeps presence in sync", async ({
+    page,
+  }) => {
+    const picker = page.locator(".cos-gallery__assignee-picker");
+    const trigger = picker.locator("summary");
+    await picker.scrollIntoViewIfNeeded();
+    await trigger.click();
+    await trigger.click();
+
+    const liu = picker.getByRole("menuitemradio", { name: /刘亚楼/ });
+    const wen = picker.getByRole("menuitemradio", { name: /温曦/ });
+    await expect(liu).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(wen).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    await expect(picker.getByRole("menu")).toBeHidden();
+    await expect(trigger).toContainText("温曦");
+    await expect(trigger.locator(".cos-avatar")).toHaveAttribute(
+      "data-presence",
+      "busy",
+    );
   });
 
   test("confirmation modal traps focus and closes with Escape", async ({
@@ -305,10 +355,7 @@ test.describe("SSR hydration compatibility", () => {
           "data-yd-metadata-content-site",
           "common",
         );
-        document.documentElement.setAttribute(
-          "data-yd-content-ready",
-          "true",
-        );
+        document.documentElement.setAttribute("data-yd-content-ready", "true");
         return true;
       };
 

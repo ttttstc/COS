@@ -295,6 +295,7 @@ export function IssueListItem({
 export interface IssueTopbarProps {
   actions?: ReactNode;
   className?: string;
+  embedded?: boolean;
   leadingAction?: ReactNode;
   mode: CounselMode;
   status: IssueStatus;
@@ -306,6 +307,7 @@ export interface IssueTopbarProps {
 export function IssueTopbar({
   actions,
   className,
+  embedded = false,
   leadingAction,
   mode,
   status,
@@ -318,7 +320,10 @@ export function IssueTopbar({
 
   return (
     <header className={cn("cos-issue-topbar", className)}>
-      <GlassClear className="cos-issue-topbar__surface">
+      <GlassClear
+        className="cos-issue-topbar__surface"
+        decorated={!embedded}
+      >
         <div className="cos-issue-topbar__leading">
           {leadingAction}
           <span className="cos-issue-topbar__mode-icon">

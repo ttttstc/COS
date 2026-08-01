@@ -1,15 +1,56 @@
 "use client";
 
 import {
+  Bell,
+  BellSlash,
+  BookmarkSimple,
+  CalendarBlank,
+  CaretDown,
+  ChartBar,
+  ChartLine,
+  ChartPieSlice,
+  ChatText,
+  Clipboard,
+  ClipboardText,
+  Clock,
+  CloudArrowDown,
+  CloudArrowUp,
   Command,
+  Compass,
+  CornersOut,
   DotsThree,
+  Envelope,
+  Eye,
+  EyeSlash,
+  File,
+  FileText,
+  Flag,
+  Folder,
   Funnel,
+  Gauge,
   Gear,
+  House,
+  Info,
+  Key,
+  LinkSimple,
+  List,
+  Lock,
   MagnifyingGlass,
+  Megaphone,
+  NotePencil,
   Plus,
+  Shield,
+  SquaresFour,
+  Stack,
   SealCheck,
   Sparkle,
+  Target,
+  Trash,
+  UploadSimple,
+  User,
   UserFocus,
+  UserPlus,
+  UsersThree,
 } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 
@@ -33,6 +74,7 @@ import {
 import {
   Accordion,
   Avatar,
+  AvatarStack,
   Button,
   CategoryTag,
   Checkbox,
@@ -105,14 +147,132 @@ const MODE_OPTIONS = [
   { value: "diagnose", label: "诊断历史思维" },
 ];
 
+const FILTER_CATEGORIES = [
+  { id: "requirement", label: "需求判断", count: 12 },
+  { id: "design", label: "方案设计", count: 8 },
+  { id: "research", label: "外部调研", count: 28 },
+  { id: "review", label: "复盘验证", count: 6 },
+  { id: "decision", label: "决策记录", count: 9 },
+  { id: "follow-up", label: "后续跟进", count: 4 },
+] as const;
+
+const GALLERY_TEAM_MEMBERS = [
+  { id: "liu", alt: "刘亚楼", initials: "LYL", presence: "online" },
+  { id: "wen", alt: "温曦", initials: "WX", presence: "busy" },
+  { id: "tomas", alt: "Tomas", initials: "TM", presence: "offline" },
+  { id: "qu", alt: "曲哲", initials: "QZ", presence: "away" },
+  { id: "amara", alt: "Amara", initials: "AM", presence: "offline" },
+] as const;
+
+const GALLERY_TABLE_ROWS = [
+  {
+    id: "LYL-2026-001",
+    title: "个人参谋产品第一版如何切入",
+    ownerId: "liu",
+    status: "调研中",
+    statusTone: "success",
+    priority: "high",
+    dueDate: "2026-08-04",
+  },
+  {
+    id: "LYL-2026-002",
+    title: "第一版先验证什么",
+    ownerId: "wen",
+    status: "待裁决",
+    statusTone: "warning",
+    priority: "high",
+    dueDate: "2026-08-06",
+  },
+  {
+    id: "LYL-2026-003",
+    title: "停止继续扩大范围的条件",
+    ownerId: "tomas",
+    status: "草稿",
+    statusTone: "neutral",
+    priority: "medium",
+    dueDate: "2026-08-08",
+  },
+  {
+    id: "LYL-2026-004",
+    title: "访谈证据如何进入正式建议",
+    ownerId: "amara",
+    status: "核验中",
+    statusTone: "info",
+    priority: "low",
+    dueDate: "2026-08-10",
+  },
+  {
+    id: "LYL-2026-005",
+    title: "第一版交付范围复盘",
+    ownerId: "qu",
+    status: "已归档",
+    statusTone: "neutral",
+    priority: "medium",
+    dueDate: "2026-08-12",
+  },
+] as const;
+
+const ICON_GALLERY_ITEMS = [
+  { label: "首页", icon: <House /> },
+  { label: "应用", icon: <SquaresFour /> },
+  { label: "层级", icon: <Stack /> },
+  { label: "探索", icon: <Compass /> },
+  { label: "收藏", icon: <BookmarkSimple /> },
+  { label: "列表", icon: <List /> },
+  { label: "议题", icon: <ClipboardText /> },
+  { label: "任务", icon: <Clipboard /> },
+  { label: "时间", icon: <Clock /> },
+  { label: "日历", icon: <CalendarBlank /> },
+  { label: "标记", icon: <Flag /> },
+  { label: "通知", icon: <Bell /> },
+  { label: "文件夹", icon: <Folder /> },
+  { label: "文件", icon: <File /> },
+  { label: "文档", icon: <FileText /> },
+  { label: "编辑", icon: <NotePencil /> },
+  { label: "删除", icon: <Trash /> },
+  { label: "上传", icon: <UploadSimple /> },
+  { label: "云端上传", icon: <CloudArrowUp /> },
+  { label: "云端下载", icon: <CloudArrowDown /> },
+  { label: "链接", icon: <LinkSimple /> },
+  { label: "全屏", icon: <CornersOut /> },
+  { label: "讨论", icon: <ChatText /> },
+  { label: "搜索", icon: <MagnifyingGlass /> },
+  { label: "柱状分析", icon: <ChartBar /> },
+  { label: "趋势分析", icon: <ChartLine /> },
+  { label: "占比分析", icon: <ChartPieSlice /> },
+  { label: "仪表", icon: <Gauge /> },
+  { label: "目标", icon: <Target /> },
+  { label: "筛选", icon: <Funnel /> },
+  { label: "锁定", icon: <Lock /> },
+  { label: "安全", icon: <Shield /> },
+  { label: "密钥", icon: <Key /> },
+  { label: "用户", icon: <User /> },
+  { label: "成员", icon: <UsersThree /> },
+  { label: "邀请", icon: <UserPlus /> },
+  { label: "显示", icon: <Eye /> },
+  { label: "隐藏", icon: <EyeSlash /> },
+  { label: "静音通知", icon: <BellSlash /> },
+  { label: "邮件", icon: <Envelope /> },
+  { label: "公告", icon: <Megaphone /> },
+  { label: "设置", icon: <Gear /> },
+] as const;
+
 const COMMAND_ITEMS: CommandPaletteItem[] = [
   {
-    id: "search",
-    label: "搜索历史议题",
-    description: "按标题、状态或材料查找",
-    shortcut: ["Ctrl", "F"],
+    id: "current",
+    label: "打开当前议题",
+    description: "个人参谋产品第一版如何切入",
+    shortcut: ["Ctrl", "1"],
     group: "最近使用",
-    icon: <MagnifyingGlass />,
+    icon: <ClipboardText />,
+  },
+  {
+    id: "recent-material",
+    label: "查看参谋材料",
+    description: "参谋结论 / 关键证据",
+    shortcut: ["Ctrl", "2"],
+    group: "最近使用",
+    icon: <FileText />,
   },
   {
     id: "new",
@@ -123,12 +283,44 @@ const COMMAND_ITEMS: CommandPaletteItem[] = [
     icon: <Plus />,
   },
   {
+    id: "upload",
+    label: "上传证据材料",
+    description: "补充会改变判断的一手来源",
+    shortcut: ["Ctrl", "U"],
+    group: "快捷操作",
+    icon: <UploadSimple />,
+  },
+  {
+    id: "history",
+    label: "打开历史依据",
+    description: "查看相关判断与改判记录",
+    shortcut: ["Ctrl", "H"],
+    group: "快捷操作",
+    icon: <Clock />,
+  },
+  {
+    id: "search",
+    label: "搜索历史议题",
+    description: "按标题、状态或材料查找",
+    shortcut: ["Ctrl", "F"],
+    group: "建议命令",
+    icon: <MagnifyingGlass />,
+  },
+  {
     id: "material",
     label: "打开参谋材料",
     description: "查看结论、证据、历史和调研过程",
     shortcut: ["Ctrl", "M"],
     group: "建议命令",
     icon: <Sparkle />,
+  },
+  {
+    id: "export",
+    label: "导出当前建议",
+    description: "生成可分享的判断摘要",
+    shortcut: ["Ctrl", "E"],
+    group: "建议命令",
+    icon: <FileText />,
   },
   {
     id: "settings",
@@ -189,11 +381,37 @@ export function ControlGallery() {
   const [splitSampleValue, setSplitSampleValue] = useState(392);
   const [composerValue, setComposerValue] =
     useState("第一版个人参谋产品应该先验证什么？");
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterCategories, setFilterCategories] = useState<string[]>([
+    "design",
+  ]);
+  const [filterStartDate, setFilterStartDate] = useState("2026-07-01");
+  const [filterEndDate, setFilterEndDate] = useState("2026-08-01");
+  const [filterSort, setFilterSort] = useState("updated-desc");
+  const [showAllFilterCategories, setShowAllFilterCategories] = useState(false);
+  const [filterAnnouncement, setFilterAnnouncement] = useState("");
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState("liu");
+  const [selectedTableRows, setSelectedTableRows] = useState<string[]>([
+    GALLERY_TABLE_ROWS[0].id,
+  ]);
+
+  const selectedAssignee =
+    GALLERY_TEAM_MEMBERS.find((member) => member.id === selectedAssigneeId) ??
+    GALLERY_TEAM_MEMBERS[0];
 
   const adjustSplitSample = (delta: -1 | 1) => {
     setSplitSampleValue((current) =>
       Math.max(320, Math.min(560, current + delta * 8)),
     );
+  };
+
+  const resetGalleryFilters = () => {
+    setFilterQuery("");
+    setFilterCategories([]);
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setFilterSort("");
+    setFilterAnnouncement("筛选条件已重置");
   };
 
   useEffect(() => {
@@ -450,6 +668,60 @@ export function ControlGallery() {
                     },
                   ]}
                 />
+              </div>
+              <div className="cos-gallery__demo">
+                <h3>IconButton visual states</h3>
+                <div
+                  className="cos-gallery__icon-state-matrix"
+                  role="group"
+                  aria-label="图标按钮状态矩阵"
+                >
+                  {[
+                    { state: "default", label: "Default" },
+                    { state: "hover", label: "Hover" },
+                    { state: "active", label: "Active" },
+                    { state: "disabled", label: "Disabled" },
+                  ].map(({ state, label }) => (
+                    <div
+                      key={state}
+                      className="cos-gallery__icon-state"
+                    >
+                      <IconButton
+                        label={`${label} 首页按钮`}
+                        shape="square"
+                        data-visual-state={state}
+                        aria-pressed={state === "active"}
+                        disabled={state === "disabled"}
+                      >
+                        <House />
+                      </IconButton>
+                      <small>{label}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="cos-gallery__demo">
+                <h3>Phosphor icon grid</h3>
+                <div
+                  className="cos-gallery__icon-grid"
+                  role="group"
+                  aria-label="ClauseOS Phosphor 图标网格"
+                >
+                  {ICON_GALLERY_ITEMS.map((item) => (
+                    <Tooltip
+                      key={item.label}
+                      label={item.label}
+                    >
+                      <IconButton
+                        label={item.label}
+                        shape="square"
+                        data-visual-state="default"
+                      >
+                        {item.icon}
+                      </IconButton>
+                    </Tooltip>
+                  ))}
+                </div>
               </div>
             </div>
           </GallerySection>
@@ -734,7 +1006,7 @@ export function ControlGallery() {
           >
             <div className="cos-gallery__grid cos-gallery__grid--two">
               <div className="cos-gallery__stack">
-                <div className="cos-gallery__popover-stage">
+                <div className="cos-gallery__popover-stage cos-gallery__popover-stage--filter">
                   <FilterPopover
                     defaultOpen
                     label={
@@ -744,24 +1016,203 @@ export function ControlGallery() {
                       </>
                     }
                   >
-                    <div className="cos-gallery__stack">
-                      <strong>议题状态</strong>
-                      <Checkbox
-                        label="调研中"
-                        defaultChecked
+                    <div className="cos-gallery__filter-panel">
+                      <SearchInput
+                        value={filterQuery}
+                        onChange={(event) => setFilterQuery(event.target.value)}
+                        placeholder="搜索字段或关键词…"
+                        shortcut="Ctrl K"
+                        aria-label="搜索筛选字段或关键词"
                       />
-                      <Checkbox label="待用户裁决" />
-                      <ControlGroup>
-                        <Button size="sm">重置</Button>
+
+                      <section className="cos-gallery__filter-section">
+                        <strong>议题类别</strong>
+                        <div className="cos-gallery__filter-options">
+                          {FILTER_CATEGORIES.slice(
+                            0,
+                            showAllFilterCategories ? undefined : 4,
+                          ).map((category) => (
+                            <div
+                              key={category.id}
+                              className="cos-gallery__filter-option"
+                            >
+                              <Checkbox
+                                label={category.label}
+                                checked={filterCategories.includes(category.id)}
+                                onChange={(event) =>
+                                  setFilterCategories((current) =>
+                                    event.target.checked
+                                      ? [...current, category.id]
+                                      : current.filter(
+                                          (item) => item !== category.id,
+                                        ),
+                                  )
+                                }
+                              />
+                              <CountBadge>{category.count}</CountBadge>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          variant="text"
+                          size="sm"
+                          trailingIcon={<CaretDown />}
+                          aria-expanded={showAllFilterCategories}
+                          onClick={() =>
+                            setShowAllFilterCategories((current) => !current)
+                          }
+                        >
+                          {showAllFilterCategories ? "收起类别" : "显示更多"}
+                        </Button>
+                      </section>
+
+                      <Divider />
+
+                      <section className="cos-gallery__filter-section">
+                        <strong>日期范围</strong>
+                        <div className="cos-gallery__filter-date-range">
+                          <FieldShell label="开始日期">
+                            <Input
+                              type="date"
+                              value={filterStartDate}
+                              onChange={(event) =>
+                                setFilterStartDate(event.target.value)
+                              }
+                            />
+                          </FieldShell>
+                          <span aria-hidden="true">—</span>
+                          <FieldShell label="结束日期">
+                            <Input
+                              type="date"
+                              value={filterEndDate}
+                              onChange={(event) =>
+                                setFilterEndDate(event.target.value)
+                              }
+                            />
+                          </FieldShell>
+                        </div>
+                      </section>
+
+                      <section className="cos-gallery__filter-section">
+                        <FieldShell label="排序方式">
+                          <Select
+                            value={filterSort}
+                            onChange={(event) =>
+                              setFilterSort(event.target.value)
+                            }
+                            options={[
+                              { value: "", label: "不指定排序" },
+                              {
+                                value: "updated-desc",
+                                label: "最近更新优先",
+                              },
+                              {
+                                value: "updated-asc",
+                                label: "最早更新优先",
+                              },
+                              { value: "priority", label: "高优先级优先" },
+                            ]}
+                          />
+                        </FieldShell>
+                      </section>
+
+                      <section className="cos-gallery__filter-section">
+                        <strong>已选择</strong>
+                        <div className="cos-gallery__filter-chips">
+                          {filterCategories.map((categoryId) => {
+                            const category = FILTER_CATEGORIES.find(
+                              (item) => item.id === categoryId,
+                            );
+                            if (!category) return null;
+                            return (
+                              <FilterChip
+                                key={category.id}
+                                active
+                                removable
+                                onRemove={() =>
+                                  setFilterCategories((current) =>
+                                    current.filter(
+                                      (item) => item !== category.id,
+                                    ),
+                                  )
+                                }
+                              >
+                                {category.label}
+                              </FilterChip>
+                            );
+                          })}
+                          {filterStartDate && filterEndDate && (
+                            <FilterChip
+                              active
+                              removable
+                              onRemove={() => {
+                                setFilterStartDate("");
+                                setFilterEndDate("");
+                              }}
+                            >
+                              {filterStartDate} 至 {filterEndDate}
+                            </FilterChip>
+                          )}
+                          {filterSort && (
+                            <FilterChip
+                              active
+                              removable
+                              onRemove={() => setFilterSort("")}
+                            >
+                              {filterSort === "priority"
+                                ? "高优先级优先"
+                                : filterSort === "updated-asc"
+                                  ? "最早更新优先"
+                                  : "最近更新优先"}
+                            </FilterChip>
+                          )}
+                          {!filterCategories.length &&
+                            !(filterStartDate && filterEndDate) &&
+                            !filterSort && (
+                              <span className="cos-gallery__filter-empty">
+                                未选择筛选条件
+                              </span>
+                            )}
+                        </div>
+                      </section>
+
+                      <div className="cos-gallery__filter-footer">
+                        <Button
+                          variant="text"
+                          size="sm"
+                          onClick={resetGalleryFilters}
+                        >
+                          重置
+                        </Button>
                         <Button
                           size="sm"
                           variant="primary"
+                          onClick={(event) => {
+                            setFilterAnnouncement(
+                              `已应用 ${filterCategories.length} 个类别筛选`,
+                            );
+                            const details =
+                              event.currentTarget.closest("details");
+                            if (details) {
+                              details.open = false;
+                              details
+                                .querySelector<HTMLElement>("summary")
+                                ?.focus();
+                            }
+                          }}
                         >
                           应用筛选
                         </Button>
-                      </ControlGroup>
+                      </div>
                     </div>
                   </FilterPopover>
+                  <span
+                    className="sr-only"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {filterAnnouncement}
+                  </span>
                 </div>
                 <div className="cos-gallery__popover-stage cos-gallery__popover-stage--compact">
                   <ContextPopover
@@ -791,6 +1242,30 @@ export function ControlGallery() {
                 </ControlGroup>
               </div>
               <div className="cos-gallery__stack">
+                <div className="cos-gallery__micro-overlay-grid">
+                  <div className="cos-gallery__tooltip-stage">
+                    <Tooltip
+                      open
+                      title="议题完成度"
+                      label="当前阶段中所有核验步骤的完成均值。"
+                    >
+                      <IconButton label="查看议题完成度">
+                        <Sparkle />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                  <div className="cos-gallery__tooltip-stage">
+                    <Tooltip
+                      open
+                      side="right"
+                      label="里程碑会自动汇总相关议题的进度与风险。"
+                    >
+                      <IconButton label="查看里程碑说明">
+                        <Info />
+                      </IconButton>
+                    </Tooltip>
+                  </div>
+                </div>
                 <ControlGroup>
                   <Button
                     leadingIcon={<Command />}
@@ -881,13 +1356,33 @@ export function ControlGallery() {
                     as="th"
                     scope="col"
                   >
+                    <span className="cos-gallery__table-check">
+                      <Checkbox
+                        label="全选议题"
+                        checked={
+                          selectedTableRows.length === GALLERY_TABLE_ROWS.length
+                        }
+                        onChange={(event) =>
+                          setSelectedTableRows(
+                            event.target.checked
+                              ? GALLERY_TABLE_ROWS.map((row) => row.id)
+                              : [],
+                          )
+                        }
+                      />
+                    </span>
+                  </TableCell>
+                  <TableCell
+                    as="th"
+                    scope="col"
+                  >
                     议题
                   </TableCell>
                   <TableCell
                     as="th"
                     scope="col"
                   >
-                    模式
+                    负责人
                   </TableCell>
                   <TableCell
                     as="th"
@@ -899,7 +1394,13 @@ export function ControlGallery() {
                     as="th"
                     scope="col"
                   >
-                    更新时间
+                    优先级
+                  </TableCell>
+                  <TableCell
+                    as="th"
+                    scope="col"
+                  >
+                    截止日期
                   </TableCell>
                   <TableCell
                     as="th"
@@ -910,64 +1411,84 @@ export function ControlGallery() {
                 </TableRow>
               </TableHeader>
               <tbody>
-                <TableRow aria-selected="true">
-                  <TableCell>
-                    <span className="cos-gallery__table-cell-title">
-                      个人参谋产品第一版如何切入
-                    </span>
-                    <span className="cos-gallery__table-cell-meta">
-                      当前主要矛盾已识别
-                    </span>
-                  </TableCell>
-                  <TableCell>调研</TableCell>
-                  <TableCell>
-                    <StatusBadge tone="success">调研中</StatusBadge>
-                  </TableCell>
-                  <TableCell>刚刚</TableCell>
-                  <TableCell>
-                    <IconButton
-                      label="议题操作"
-                      variant="ghost"
-                      size="sm"
+                {GALLERY_TABLE_ROWS.map((row) => {
+                  const owner =
+                    GALLERY_TEAM_MEMBERS.find(
+                      (member) => member.id === row.ownerId,
+                    ) ?? GALLERY_TEAM_MEMBERS[0];
+                  return (
+                    <TableRow
+                      key={row.id}
+                      aria-selected={
+                        selectedTableRows.includes(row.id) || undefined
+                      }
                     >
-                      <DotsThree />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>第一版先验证什么</TableCell>
-                  <TableCell>决策</TableCell>
-                  <TableCell>
-                    <StatusBadge tone="warning">待裁决</StatusBadge>
-                  </TableCell>
-                  <TableCell>2 小时前</TableCell>
-                  <TableCell>
-                    <IconButton
-                      label="议题操作"
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <DotsThree />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>停止继续扩大范围的条件</TableCell>
-                  <TableCell>下一步</TableCell>
-                  <TableCell>
-                    <StatusBadge>草稿</StatusBadge>
-                  </TableCell>
-                  <TableCell>昨天</TableCell>
-                  <TableCell>
-                    <IconButton
-                      label="议题操作"
-                      variant="ghost"
-                      size="sm"
-                    >
-                      <DotsThree />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+                      <TableCell>
+                        <span className="cos-gallery__table-check">
+                          <Checkbox
+                            label={`选择${row.title}`}
+                            checked={selectedTableRows.includes(row.id)}
+                            onChange={(event) =>
+                              setSelectedTableRows((current) =>
+                                event.target.checked
+                                  ? [...current, row.id]
+                                  : current.filter((id) => id !== row.id),
+                              )
+                            }
+                          />
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="cos-gallery__table-cell-title">
+                          {row.title}
+                        </span>
+                        <span className="cos-gallery__table-cell-meta">
+                          {row.id}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="cos-gallery__table-owner">
+                          <Avatar
+                            alt={`${owner.alt}头像`}
+                            initials={owner.initials}
+                            size="sm"
+                          />
+                          {owner.alt}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <StatusBadge tone={row.statusTone}>
+                          {row.status}
+                        </StatusBadge>
+                      </TableCell>
+                      <TableCell>
+                        <PriorityLabel
+                          className="cos-gallery__table-priority"
+                          priority={row.priority}
+                          label={
+                            row.priority === "high"
+                              ? "高"
+                              : row.priority === "medium"
+                                ? "中"
+                                : "低"
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <time dateTime={row.dueDate}>{row.dueDate}</time>
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          label={`${row.title}操作`}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <DotsThree />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </tbody>
             </Table>
             <div className="cos-gallery__row">
@@ -1061,17 +1582,293 @@ export function ControlGallery() {
             description="错误不白屏；加载使用 skeleton；空态说明下一步。"
           >
             <div className="cos-gallery__stack">
+              <div className="cos-gallery__demo">
+                <h3>Avatar sizes</h3>
+                <div
+                  className="cos-gallery__avatar-size-grid"
+                  role="group"
+                  aria-label="头像尺寸矩阵"
+                >
+                  {(
+                    [
+                      { size: "xs", label: "XS", pixels: "16px" },
+                      { size: "sm", label: "SM", pixels: "24px" },
+                      { size: "md", label: "MD", pixels: "32px" },
+                      { size: "lg", label: "LG", pixels: "48px" },
+                      { size: "xl", label: "XL", pixels: "64px" },
+                    ] as const
+                  ).map((item) => (
+                    <div
+                      key={item.size}
+                      className="cos-gallery__avatar-sample"
+                    >
+                      <Avatar
+                        alt={`${item.label} 尺寸参谋头像`}
+                        initials="LYL"
+                        size={item.size}
+                      />
+                      <strong>{item.label}</strong>
+                      <small>{item.pixels}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cos-gallery__demo">
+                <h3>Initials & team stacks</h3>
+                <div className="cos-gallery__avatar-support-grid">
+                  <div className="cos-gallery__initials-row">
+                    <Avatar
+                      alt="刘亚楼姓名缩写头像"
+                      initials="LYL"
+                      size="lg"
+                    />
+                    <Avatar
+                      alt="温曦姓名缩写头像"
+                      initials="WX"
+                      size="md"
+                    />
+                    <Avatar
+                      alt="Tomas 姓名缩写头像"
+                      initials="TM"
+                      size="sm"
+                    />
+                  </div>
+                  <div className="cos-gallery__team-stack-list">
+                    <AvatarStack
+                      members={[...GALLERY_TEAM_MEMBERS]}
+                      max={2}
+                      size="lg"
+                      label="三人团队"
+                    />
+                    <AvatarStack
+                      members={[...GALLERY_TEAM_MEMBERS]}
+                      max={3}
+                      size="md"
+                      label="五人团队"
+                    />
+                    <AvatarStack
+                      members={[...GALLERY_TEAM_MEMBERS]}
+                      max={4}
+                      size="sm"
+                      label="紧凑团队"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="cos-gallery__demo">
+                <h3>Presence states</h3>
+                <div
+                  className="cos-gallery__avatar-presence-grid"
+                  role="group"
+                  aria-label="头像在线状态矩阵"
+                >
+                  {(
+                    [
+                      {
+                        presence: "online",
+                        label: "在线",
+                        description: "正在工作",
+                        initials: "LYL",
+                      },
+                      {
+                        presence: "busy",
+                        label: "忙碌",
+                        description: "会议中",
+                        initials: "WX",
+                      },
+                      {
+                        presence: "offline",
+                        label: "离线",
+                        description: "当前离线",
+                        initials: "TM",
+                      },
+                      {
+                        presence: "away",
+                        label: "暂离",
+                        description: "不在桌前",
+                        initials: "QZ",
+                      },
+                      {
+                        presence: "unknown",
+                        label: "未知",
+                        description: "无状态",
+                        initials: "?",
+                      },
+                    ] as const
+                  ).map((item) => (
+                    <div
+                      key={item.presence}
+                      className="cos-gallery__avatar-sample"
+                    >
+                      <Avatar
+                        alt={`${item.label}状态头像`}
+                        initials={item.initials}
+                        size="xl"
+                        presence={item.presence}
+                      />
+                      <strong>{item.label}</strong>
+                      <small>{item.description}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cos-gallery__demo">
+                <h3>Roles & assignment</h3>
+                <div className="cos-gallery__role-grid">
+                  <Button
+                    size="sm"
+                    leadingIcon={<Shield />}
+                  >
+                    负责人
+                  </Button>
+                  <Button
+                    size="sm"
+                    leadingIcon={<Gear />}
+                  >
+                    管理员
+                  </Button>
+                  <Button
+                    size="sm"
+                    leadingIcon={<User />}
+                  >
+                    成员
+                  </Button>
+                  <Button
+                    size="sm"
+                    leadingIcon={<Eye />}
+                  >
+                    查看者
+                  </Button>
+                  <Button
+                    size="sm"
+                    leadingIcon={<UserPlus />}
+                  >
+                    访客
+                  </Button>
+                </div>
+                <div className="cos-gallery__assignment-grid">
+                  <FieldShell
+                    label="邀请加入议题"
+                    hint="邀请成员共同核验当前议题。"
+                  >
+                    <Input placeholder="输入邮箱或姓名" />
+                  </FieldShell>
+                  <div className="cos-gallery__assignee-stage">
+                    <Popover
+                      className="cos-gallery__assignee-picker"
+                      defaultOpen
+                      ariaHasPopup="menu"
+                      label={
+                        <span className="cos-gallery__assignee-label">
+                          <Avatar
+                            alt={`${selectedAssignee.alt}头像`}
+                            initials={selectedAssignee.initials}
+                            size="sm"
+                            presence={selectedAssignee.presence}
+                          />
+                          {selectedAssignee.alt}
+                          <CaretDown aria-hidden="true" />
+                        </span>
+                      }
+                    >
+                      <div
+                        className="cos-menu cos-gallery__assignee-options"
+                        role="menu"
+                        aria-label="选择负责人"
+                        onKeyDown={(event) => {
+                          const items = Array.from(
+                            event.currentTarget.querySelectorAll<HTMLButtonElement>(
+                              '[role="menuitemradio"]',
+                            ),
+                          );
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            const details =
+                              event.currentTarget.closest("details");
+                            if (details) {
+                              details.open = false;
+                              details
+                                .querySelector<HTMLElement>("summary")
+                                ?.focus();
+                            }
+                            return;
+                          }
+                          if (
+                            !["ArrowDown", "ArrowUp", "Home", "End"].includes(
+                              event.key,
+                            )
+                          ) {
+                            return;
+                          }
+                          event.preventDefault();
+                          const index = items.indexOf(
+                            document.activeElement as HTMLButtonElement,
+                          );
+                          const nextIndex =
+                            event.key === "Home"
+                              ? 0
+                              : event.key === "End"
+                                ? items.length - 1
+                                : index < 0
+                                  ? event.key === "ArrowDown"
+                                    ? 0
+                                    : items.length - 1
+                                  : (index +
+                                      (event.key === "ArrowDown" ? 1 : -1) +
+                                      items.length) %
+                                    items.length;
+                          items[nextIndex]?.focus();
+                        }}
+                      >
+                        {GALLERY_TEAM_MEMBERS.slice(0, 4).map(
+                          (member, index) => (
+                            <button
+                              key={member.id}
+                              type="button"
+                              role="menuitemradio"
+                              aria-checked={member.id === selectedAssigneeId}
+                              tabIndex={
+                                member.id === selectedAssigneeId ? 0 : -1
+                              }
+                              onClick={(event) => {
+                                setSelectedAssigneeId(member.id);
+                                const details =
+                                  event.currentTarget.closest("details");
+                                if (details) {
+                                  details.open = false;
+                                  details
+                                    .querySelector<HTMLElement>("summary")
+                                    ?.focus();
+                                }
+                              }}
+                            >
+                              <Avatar
+                                alt={`${member.alt}头像`}
+                                initials={member.initials}
+                                size="sm"
+                                presence={member.presence}
+                              />
+                              <span>{member.alt}</span>
+                              <small>
+                                {index === 0
+                                  ? "产品负责人"
+                                  : index === 1
+                                    ? "设计负责人"
+                                    : "议题成员"}
+                              </small>
+                            </button>
+                          ),
+                        )}
+                      </div>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+
               <div className="cos-gallery__row">
-                <Avatar
-                  alt="刘亚楼参谋"
-                  initials="LYL"
-                  online
-                />
-                <Avatar
-                  alt="用户"
-                  initials="NB"
-                  size="lg"
-                />
                 <FileUploadTrigger inputId="gallery-file" />
                 <input
                   id="gallery-file"

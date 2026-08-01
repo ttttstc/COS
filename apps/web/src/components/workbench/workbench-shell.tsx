@@ -181,7 +181,12 @@ export function IssueNavigator({
       className={cn("cos-workbench__navigator", className)}
       aria-label="议题导航"
     >
-      <GlassRegular className="cos-workbench__navigator-surface">
+      <GlassRegular
+        className="cos-workbench__navigator-surface"
+        optics="shell"
+        prismCorners={["top-right"]}
+        sweep="top-left"
+      >
         <BrandLockup />
 
         <NewIssueButton onClick={onCreateIssue} />
@@ -291,7 +296,12 @@ export function IssueWorkspace({
 }: IssueWorkspaceProps) {
   return (
     <main className={cn("cos-workbench__workspace", className)}>
-      <GlassClear className="cos-workbench__workspace-surface">
+      <GlassClear
+        className="cos-workbench__workspace-surface"
+        optics="panel"
+        prismCorners={["bottom-right"]}
+        sweep="none"
+      >
         {topbar}
         {scrollable ? (
           <ScrollArea
@@ -331,7 +341,12 @@ export function CounselMaterialPanel({
       className={cn("cos-workbench__material", className)}
       aria-label="参谋材料"
     >
-      <GlassRegular className="cos-workbench__material-surface">
+      <GlassRegular
+        className="cos-workbench__material-surface"
+        optics="shell"
+        prismCorners={["top-right", "bottom-right"]}
+        sweep="top-left"
+      >
         <header className="cos-workbench__material-heading">
           <div>
             <span>议题材料</span>

@@ -220,6 +220,7 @@ export function WorkbenchPreview({ state }: { state: WorkbenchPreviewState }) {
 
   const topbar = (
     <IssueTopbar
+      embedded
       title={scenario.title}
       mode={scenario.mode}
       status={scenario.status}

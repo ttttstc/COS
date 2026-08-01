@@ -4,9 +4,12 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  Avatar,
+  AvatarStack,
   Combobox,
   Divider,
   FileUploadTrigger,
+  FilterPopover,
   NotificationDot,
   OverflowMenu,
   Popover,
@@ -23,6 +26,7 @@ import {
   Tabs,
   Timeline,
   TimelineItem,
+  Tooltip,
   type TabItem,
 } from "./controls";
 
@@ -193,6 +197,85 @@ describe("P0 display controls", () => {
       "col",
     );
     expect(screen.getByRole("cell", { name: "访谈记录" })).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole("table", { name: "证据列表" })
+        .closest(".lyl-glass-surface"),
+    ).toHaveAttribute("data-optics", "table");
+  });
+
+  it("renders the five-size avatar contract and named presence state", () => {
+    render(
+      <>
+        <Avatar
+          alt="最小头像"
+          initials="XS"
+          size="xs"
+        />
+        <Avatar
+          alt="参谋头像"
+          initials="LYL"
+          size="xl"
+          presence="busy"
+        />
+      </>,
+    );
+
+    expect(screen.getByLabelText("最小头像").parentElement).toHaveClass(
+      "cos-avatar--xs",
+    );
+    expect(screen.getByLabelText("参谋头像").parentElement).toHaveClass(
+      "cos-avatar--xl",
+    );
+    expect(screen.getByRole("img", { name: "忙碌" })).toHaveAttribute(
+      "data-presence",
+      "busy",
+    );
+  });
+
+  it("limits visible team avatars and exposes the remaining member count", () => {
+    render(
+      <AvatarStack
+        label="评审团队"
+        max={2}
+        members={[
+          { id: "a", alt: "成员甲", initials: "A" },
+          { id: "b", alt: "成员乙", initials: "B" },
+          { id: "c", alt: "成员丙", initials: "C" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("group", { name: "评审团队" })).toBeInTheDocument();
+    expect(screen.getByLabelText("另有 1 位成员")).toHaveTextContent("+1");
+    expect(screen.queryByLabelText("成员丙")).not.toBeInTheDocument();
+  });
+
+  it("gives filter popovers and tooltips their physical optics profile", () => {
+    render(
+      <>
+        <FilterPopover
+          label="筛选"
+          defaultOpen
+        >
+          筛选内容
+        </FilterPopover>
+        <Tooltip
+          title="项目完成度"
+          label="所有子任务的完成度均值"
+        >
+          <button type="button">说明</button>
+        </Tooltip>
+      </>,
+    );
+
+    expect(screen.getByText("筛选").closest("details")).toHaveClass(
+      "cos-filter-popover",
+    );
+    expect(
+      screen.getByText("筛选内容").closest(".lyl-glass-surface"),
+    ).toHaveAttribute("data-optics", "popover");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("项目完成度");
   });
 });
 
@@ -345,9 +428,7 @@ describe("SplitButton", () => {
         label="形成建议"
         disabled
         onClick={() => undefined}
-        items={[
-          { id: "draft", label: "保存草稿", onSelect: () => undefined },
-        ]}
+        items={[{ id: "draft", label: "保存草稿", onSelect: () => undefined }]}
       />,
     );
 

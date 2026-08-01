@@ -1,11 +1,11 @@
 {
   "baseURL": "http://127.0.0.1:3001",
-  "capturedAt": "2026-07-31T19:57:18.765Z",
+  "capturedAt": "2026-08-01T01:26:56.045Z",
   "evidence": [
     {
-      "bytes": 1654769,
+      "bytes": 2179830,
       "filename": "control-gallery-1440.png",
-      "height": 7622,
+      "height": 9837,
       "label": "Control Gallery",
       "reducedMotion": "no-preference",
       "route": "/control-gallery",
@@ -16,7 +16,7 @@
       "width": 1440
     },
     {
-      "bytes": 249205,
+      "bytes": 269664,
       "filename": "workbench-1440-new.png",
       "height": 900,
       "label": "1440 new issue",
@@ -29,7 +29,7 @@
       "width": 1440
     },
     {
-      "bytes": 269228,
+      "bytes": 287404,
       "filename": "workbench-1440-running.png",
       "height": 900,
       "label": "1440 in progress",
@@ -42,7 +42,7 @@
       "width": 1440
     },
     {
-      "bytes": 333430,
+      "bytes": 375682,
       "filename": "workbench-1440-waiting.png",
       "height": 900,
       "label": "1440 waiting for decision",
@@ -55,7 +55,7 @@
       "width": 1440
     },
     {
-      "bytes": 281883,
+      "bytes": 292126,
       "filename": "workbench-1440-formal.png",
       "height": 900,
       "label": "1440 formal counsel",
@@ -68,7 +68,7 @@
       "width": 1440
     },
     {
-      "bytes": 244023,
+      "bytes": 252667,
       "filename": "workbench-1280-formal.png",
       "height": 800,
       "label": "1280 formal counsel",
@@ -81,7 +81,7 @@
       "width": 1280
     },
     {
-      "bytes": 186428,
+      "bytes": 189460,
       "filename": "workbench-1024-formal.png",
       "height": 768,
       "label": "1024 compact desktop",
@@ -94,7 +94,7 @@
       "width": 1024
     },
     {
-      "bytes": 17066,
+      "bytes": 16924,
       "filename": "workbench-960-desktop-only.png",
       "height": 720,
       "label": "960 desktop-only guard",
@@ -107,7 +107,7 @@
       "width": 960
     },
     {
-      "bytes": 179890,
+      "bytes": 195992,
       "filename": "control-gallery-command-palette.png",
       "height": 900,
       "label": "Command palette",
@@ -120,7 +120,7 @@
       "width": 1440
     },
     {
-      "bytes": 196639,
+      "bytes": 217325,
       "filename": "control-gallery-filter-popover.png",
       "height": 900,
       "label": "Filter popover",
@@ -133,7 +133,46 @@
       "width": 1440
     },
     {
-      "bytes": 142175,
+      "bytes": 142148,
+      "filename": "control-gallery-icon-states.png",
+      "height": 900,
+      "label": "Icon visual states",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 220050,
+      "filename": "control-gallery-table.png",
+      "height": 900,
+      "label": "Glass table",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 181398,
+      "filename": "control-gallery-avatars.png",
+      "height": 900,
+      "label": "Avatar system",
+      "reducedMotion": "no-preference",
+      "route": "/control-gallery",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "width": 1440
+    },
+    {
+      "bytes": 128236,
       "filename": "control-gallery-modal.png",
       "height": 900,
       "label": "Confirmation modal",
@@ -146,7 +185,7 @@
       "width": 1440
     },
     {
-      "bytes": 154965,
+      "bytes": 181398,
       "filename": "control-gallery-toast.png",
       "height": 900,
       "label": "Toast",
@@ -159,7 +198,7 @@
       "width": 1440
     },
     {
-      "bytes": 217856,
+      "bytes": 164223,
       "filename": "control-gallery-keyboard-focus.png",
       "height": 900,
       "label": "Keyboard focus",
@@ -172,7 +211,7 @@
       "width": 1440
     },
     {
-      "bytes": 269228,
+      "bytes": 287404,
       "filename": "workbench-reduced-motion.png",
       "height": 900,
       "label": "Reduced motion",

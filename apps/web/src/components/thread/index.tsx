@@ -400,6 +400,7 @@ export function Thread() {
 
   const topbar = (
     <IssueTopbar
+      embedded
       title={currentTitle}
       mode={mode}
       status={currentStatus}

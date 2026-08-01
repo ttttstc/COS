@@ -103,7 +103,9 @@
   flex: 0 0 auto;
   place-items: center;
   color: var(--lyl-text-1);
-  border: 1px solid var(--lyl-glass-border-soft);
+  border: 1px solid transparent;
+  border-top-color: var(--lyl-glass-border-soft);
+  border-left-color: var(--lyl-glass-border-soft);
   border-radius: var(--lyl-radius-sm);
   background: var(--lyl-glass-thin);
   box-shadow: inset 0 1px 0 var(--lyl-glass-inner);
@@ -139,6 +141,31 @@
 
 .cos-workbench__new-issue {
   width: 100%;
+  border-color: rgba(245, 248, 255, 0.2);
+  color: var(--lyl-text-1);
+  background:
+    radial-gradient(
+      72% 180% at 10% -54%,
+      rgba(255, 255, 255, 0.16),
+      transparent 68%
+    ),
+    rgba(8, 11, 14, 0.84);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+.cos-workbench__new-issue:hover:not(:disabled) {
+  border-color: rgba(250, 252, 255, 0.42);
+  color: var(--lyl-text-1);
+  background:
+    radial-gradient(
+      72% 180% at 10% -54%,
+      rgba(255, 255, 255, 0.22),
+      transparent 68%
+    ),
+    rgba(11, 14, 18, 0.9);
 }
 
 .cos-workbench__quick-modes h2,
@@ -158,6 +185,7 @@
 
 .cos-workbench__quick-modes button,
 .cos-workbench__command-trigger {
+  position: relative;
   width: 100%;
   min-height: calc(var(--lyl-space-8) + var(--lyl-space-3));
   gap: var(--lyl-space-3);
@@ -178,15 +206,53 @@
 .cos-workbench__quick-modes button:hover,
 .cos-workbench__command-trigger:hover:not(:disabled) {
   color: var(--lyl-text-1);
-  border-color: var(--lyl-border-content);
-  background: color-mix(in srgb, var(--lyl-text-1) 5%, transparent);
+  border-color: var(--lyl-glass-border-soft) transparent transparent
+    var(--lyl-glass-border-soft);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--lyl-text-1) 7%, transparent),
+    transparent 72%
+  );
+  box-shadow: inset 0 1px 0 var(--lyl-glass-inner);
 }
 
 .cos-workbench__quick-modes button[aria-pressed="true"] {
   color: var(--lyl-text-1);
-  border-color: var(--lyl-glass-border-soft);
-  background: color-mix(in srgb, var(--lyl-text-1) 8%, transparent);
-  box-shadow: inset 2px 0 0 var(--lyl-green-400);
+  border-color: color-mix(in srgb, var(--lyl-edge-white) 62%, transparent)
+    transparent transparent var(--lyl-glass-border-soft);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--lyl-text-1) 11%, transparent),
+    color-mix(in srgb, var(--lyl-text-1) 3%, transparent) 58%,
+    transparent
+  );
+  box-shadow:
+    inset 0 1px 0 var(--lyl-glass-inner),
+    inset 1px 0 0 color-mix(in srgb, var(--lyl-edge-white) 28%, transparent);
+}
+
+.cos-workbench__quick-modes button[aria-pressed="true"]::after {
+  position: absolute;
+  right: var(--lyl-space-2);
+  bottom: var(--lyl-space-2);
+  width: var(--lyl-space-1);
+  height: var(--lyl-space-1);
+  border-radius: var(--lyl-radius-pill);
+  background: var(--lyl-green-400);
+  box-shadow: 0 0 0 2px var(--lyl-green-soft);
+  content: "";
+}
+
+.cos-workbench__quick-modes button:disabled {
+  color: var(--lyl-text-disabled);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.cos-workbench__quick-modes button:disabled::after {
+  display: none;
 }
 
 .cos-workbench__quick-modes button:focus-visible,
@@ -246,9 +312,8 @@
 .cos-workbench__workspace .cos-issue-topbar__surface {
   border: 0;
   border-radius: 0;
-  border-bottom: 1px solid var(--lyl-border-content);
-  background: color-mix(in srgb, var(--lyl-bg-primary) 82%, transparent);
-  box-shadow: none;
+  background: transparent;
+  box-shadow: inset 0 -1px 0 var(--lyl-border-content);
 }
 
 .cos-workbench__workspace-scroll {
