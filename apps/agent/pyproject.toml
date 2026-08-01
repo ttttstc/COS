@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Local LangGraph baseline for the LYL counsel agent"
 requires-python = ">=3.12"
 dependencies = [
+  "fastapi>=0.115,<1",
   "langchain>=1.2,<2",
   "langchain-openai>=1.1,<2",
   "langgraph>=1.0,<2",

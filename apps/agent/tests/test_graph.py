@@ -33,6 +33,24 @@ async def test_fake_model_produces_response_without_api_key() -> None:
 
 
 @pytest.mark.asyncio
+async def test_injected_model_does_not_require_model_environment(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.delenv("LYL_MODEL_PROVIDER", raising=False)
+    monkeypatch.delenv("LYL_MODEL", raising=False)
+    monkeypatch.delenv("LYL_MEMORY_DB_PATH", raising=False)
+    monkeypatch.chdir(tmp_path)
+    compiled = build_graph(FakeListChatModel(responses=["offline response"]))
+
+    result = await compiled.ainvoke(
+        {"messages": [HumanMessage(content="offline test")]}
+    )
+
+    assert result["messages"][-1].content == "offline response"
+
+
+@pytest.mark.asyncio
 async def test_messages_are_appended() -> None:
     compiled = build_graph(FakeListChatModel(responses=["first", "second"]))
     first = await compiled.ainvoke({"messages": [HumanMessage(content="one")]})
