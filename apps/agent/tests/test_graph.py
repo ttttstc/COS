@@ -17,6 +17,8 @@ def test_graph_compiles_with_expected_nodes() -> None:
         "mode_router",
         "retrieve_context",
         "problem_reframe",
+        "request_decision",
+        "prepare_artifact",
         "synthesize_counsel",
         "__end__",
     }

@@ -30,3 +30,4 @@ packages = ["src/lyl_agent"]
 addopts = "-q"
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["live: calls the configured paid or remote LLM"]

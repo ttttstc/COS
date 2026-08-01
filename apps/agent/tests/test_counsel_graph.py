@@ -102,7 +102,7 @@ async def test_manual_mode_overrides_automatic_mode() -> None:
     graph = build_graph(FakeListChatModel(responses=["decision response"]))
 
     result = await graph.ainvoke(
-        {"messages": [HumanMessage(content="请调研两个方案的市场数据")]},
+        {"messages": [HumanMessage(content="请判断两个方案应如何选择")]},
         context={"mode": "decide"},
     )
 
@@ -112,6 +112,8 @@ async def test_manual_mode_overrides_automatic_mode() -> None:
         "mode_router",
         "retrieve_context",
         "problem_reframe",
+        "request_decision",
+        "prepare_artifact",
         "synthesize_counsel",
     ]
 
@@ -217,7 +219,6 @@ async def test_new_turn_resets_stage_progress_and_transient_error() -> None:
     [
         ("ask", "我现在该先完成哪件事？"),
         ("decide", "我应该选择方案 A 还是方案 B？"),
-        ("research", "请调研这个市场是否值得进入。"),
         ("diagnose", "请诊断我最近反复推迟决策的原因。"),
         ("discuss", "我想聊聊目前的产品方向。"),
     ],
@@ -265,7 +266,7 @@ async def test_mode_is_inferred_when_context_is_missing(
 
 
 @pytest.mark.asyncio
-async def test_vague_request_returns_a_clarification_prompt() -> None:
+async def test_vague_request_returns_a_scope_interrupt() -> None:
     graph = build_graph(FakeListChatModel(responses=["unused"]))
 
     result = await graph.ainvoke(
@@ -273,12 +274,11 @@ async def test_vague_request_returns_a_clarification_prompt() -> None:
         context={"mode": "discuss"},
     )
 
-    assert result["recommendation"]["kind"] == "clarification"
-    assert "补充" in result["messages"][-1].content
+    assert result["__interrupt__"][0].value["type"] == "scope_clarification"
 
 
 @pytest.mark.asyncio
-async def test_research_mode_returns_a_deferred_plan_without_external_tools() -> None:
+async def test_research_mode_requests_approval_without_external_tools() -> None:
     graph = build_graph(FakeListChatModel(responses=["unused"]))
 
     result = await graph.ainvoke(
@@ -286,8 +286,9 @@ async def test_research_mode_returns_a_deferred_plan_without_external_tools() ->
         context={"mode": "research"},
     )
 
-    assert result["recommendation"]["kind"] == "research_deferred"
-    assert "调研" in result["messages"][-1].content
+    interrupt_value = result["__interrupt__"][0].value
+    assert interrupt_value["type"] == "research_approval"
+    assert interrupt_value["actions"] == ["approve", "modify", "report_now"]
 
 
 class FailingModel:

@@ -32,6 +32,13 @@ export function getThreadStatusLabel(status: ThreadStatus): string {
   return STATUS_LABELS[status];
 }
 
+export function getPendingInterruptCount(thread: Thread): number {
+  return Object.values(thread.interrupts ?? {}).reduce(
+    (count, interrupts) => count + interrupts.length,
+    0,
+  );
+}
+
 export function getThreadUpdatedLabel(updatedAt: string): string {
   return formatDistanceToNow(new Date(updatedAt), {
     addSuffix: true,

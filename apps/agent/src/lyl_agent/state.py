@@ -68,6 +68,9 @@ class CounselState(TypedDict, total=False):
     recommendation: dict[str, object] | None
     ui: list[dict[str, object]]
     artifact: dict[str, object] | None
+    artifact_versions: list[dict[str, object]]
+    interrupt_count: int
+    interrupt_decisions: list[dict[str, object]]
     memory_proposals: list[dict[str, object]]
     decision_record_id: str | None
     feedback: dict[str, object] | None

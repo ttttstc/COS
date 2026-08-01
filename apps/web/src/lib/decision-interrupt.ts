@@ -253,7 +253,7 @@ function toPresentation(
 
   if (value.type === "scope_clarification") {
     return {
-      allowReportNow: false,
+      allowReportNow: true,
       interruptId,
       kind: value.type,
       options: value.options.map((option) => ({
@@ -265,14 +265,14 @@ function toPresentation(
       ...(protocolInterruptId ? { protocolInterruptId } : {}),
       question: value.question,
       ...(value.recommended ? { recommendedOptionId: value.recommended } : {}),
-      resumeValues: value.options.map((option) => option.id),
+      resumeValues: [...value.options.map((option) => option.id), "report_now"],
       title: "确认议题范围",
     };
   }
 
   if (value.type === "value_tradeoff") {
     return {
-      allowReportNow: false,
+      allowReportNow: true,
       interruptId,
       kind: value.type,
       options: value.options.map((option) => ({
@@ -285,7 +285,7 @@ function toPresentation(
       question: value.question,
       rationale: value.why_needed,
       ...(value.recommended ? { recommendedOptionId: value.recommended } : {}),
-      resumeValues: value.options.map((option) => option.id),
+      resumeValues: [...value.options.map((option) => option.id), "report_now"],
       title: "确认价值取舍",
     };
   }
@@ -338,9 +338,11 @@ export function parseStructuredDecisionInterrupt(
 export function buildStructuredInterruptResume(
   interrupt: StructuredDecisionInterrupt,
   selection: string,
-): string {
+): string | Record<string, string> {
   if (!interrupt.resumeValues.includes(selection)) {
     throw new Error(`Unsupported interrupt selection: ${selection}`);
   }
-  return selection;
+  return interrupt.protocolInterruptId
+    ? { [interrupt.protocolInterruptId]: selection }
+    : selection;
 }

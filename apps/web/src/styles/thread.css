@@ -200,6 +200,26 @@
   gap: var(--lyl-space-3);
 }
 
+.cos-artifact-version {
+  display: grid;
+  gap: var(--lyl-space-2);
+  padding: var(--lyl-space-3);
+  border: 1px solid var(--lyl-border-content);
+  border-radius: var(--lyl-radius-md);
+  background: var(--lyl-bg-content);
+}
+
+.cos-artifact-version .cos-select-wrap {
+  width: 100%;
+}
+
+.cos-artifact-version p {
+  margin: 0;
+  color: var(--lyl-text-2);
+  font-size: var(--lyl-caption);
+  line-height: 1.5;
+}
+
 .cos-thread-tool-detail {
   max-height: 280px;
   overflow: auto;
