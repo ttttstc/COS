@@ -28,6 +28,10 @@ import { toast } from "sonner";
 import { type CounselMode } from "@/lib/counsel-mode";
 import { resolveApiUrl, resolveStreamConfig } from "@/lib/stream-config";
 import type { CounselState } from "@/lib/counsel-state";
+import {
+  GlassThick,
+  StarGridBackground,
+} from "@/components/clauseos/primitives";
 
 export type StateType = CounselState;
 
@@ -198,114 +202,121 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   // Show the form if we: don't have an API URL, or don't have an assistant ID
   if (!finalApiUrl || !finalAssistantId) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center p-4">
-        <div className="animate-in fade-in-0 zoom-in-95 bg-background flex max-w-3xl flex-col rounded-lg border shadow-lg">
-          <div className="mt-14 flex flex-col gap-2 border-b p-6">
-            <div className="flex flex-col items-start gap-2">
-              <LylMark />
-              <h1 className="text-xl font-semibold tracking-tight">
-                刘亚楼参谋台
-              </h1>
-            </div>
-            <p className="text-muted-foreground">
-              配置本地开发使用的参谋服务地址与 Agent ID。
-            </p>
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-
-              const form = e.target as HTMLFormElement;
-              const formData = new FormData(form);
-              const apiUrl = formData.get("apiUrl") as string;
-              const assistantId = formData.get("assistantId") as string;
-              const apiKey = formData.get("apiKey") as string;
-
-              setApiUrl(apiUrl);
-              setApiKey(apiKey);
-              setAssistantId(assistantId);
-              setAuthScheme(isAgentBuilder ? AGENT_BUILDER_AUTH_SCHEME : "");
-
-              form.reset();
-            }}
-            className="bg-muted/50 flex flex-col gap-6 p-6"
+      <StarGridBackground className="cos-stream-setup">
+        <main className="cos-stream-setup__main">
+          <GlassThick
+            className="cos-stream-setup__panel animate-in fade-in-0 zoom-in-95"
+            optics="palette"
+            prismCorners={["top-right", "bottom-right"]}
+            sweep="dual"
           >
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="apiUrl">
-                服务地址<span className="text-rose-500">*</span>
-              </Label>
-              <p className="text-muted-foreground text-sm">
-                本地 LangGraph 服务或开发部署地址。
+            <div className="mt-14 flex flex-col gap-2 border-b p-6">
+              <div className="flex flex-col items-start gap-2">
+                <LylMark />
+                <h1 className="text-xl font-semibold tracking-tight">
+                  刘亚楼参谋台
+                </h1>
+              </div>
+              <p className="text-muted-foreground">
+                配置本地开发使用的参谋服务地址与 Agent ID。
               </p>
-              <Input
-                id="apiUrl"
-                name="apiUrl"
-                className="bg-background"
-                defaultValue={apiUrl || DEFAULT_API_URL}
-                required
-              />
             </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="assistantId">
-                Agent ID<span className="text-rose-500">*</span>
-              </Label>
-              <p className="text-muted-foreground text-sm">
-                用于读取历史议题并发起运行的 Graph 或 Assistant 标识。
-              </p>
-              <Input
-                id="assistantId"
-                name="assistantId"
-                className="bg-background"
-                defaultValue={assistantId || DEFAULT_ASSISTANT_ID}
-                required
-              />
-            </div>
+                const form = e.target as HTMLFormElement;
+                const formData = new FormData(form);
+                const apiUrl = formData.get("apiUrl") as string;
+                const assistantId = formData.get("assistantId") as string;
+                const apiKey = formData.get("apiKey") as string;
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="apiKey">开发 API Key</Label>
-              <p className="text-muted-foreground text-sm">
-                本地服务不需要。此值仅保存在浏览器本地，用于开发部署鉴权。
-              </p>
-              <PasswordInput
-                id="apiKey"
-                name="apiKey"
-                defaultValue={apiKey ?? ""}
-                className="bg-background"
-                placeholder="lsv2_pt_..."
-              />
-            </div>
+                setApiUrl(apiUrl);
+                setApiKey(apiKey);
+                setAssistantId(assistantId);
+                setAuthScheme(isAgentBuilder ? AGENT_BUILDER_AUTH_SCHEME : "");
 
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-1">
-                  <Label htmlFor="agentBuilderEnabled">
-                    Agent Builder 部署
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    仅在使用 Agent Builder 部署时开启。
-                  </p>
-                </div>
-                <Switch
-                  id="agentBuilderEnabled"
-                  checked={isAgentBuilder}
-                  onCheckedChange={setIsAgentBuilder}
+                form.reset();
+              }}
+              className="bg-muted/50 flex flex-col gap-6 p-6"
+            >
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="apiUrl">
+                  服务地址<span className="text-rose-500">*</span>
+                </Label>
+                <p className="text-muted-foreground text-sm">
+                  本地 LangGraph 服务或开发部署地址。
+                </p>
+                <Input
+                  id="apiUrl"
+                  name="apiUrl"
+                  className="bg-background"
+                  defaultValue={apiUrl || DEFAULT_API_URL}
+                  required
                 />
               </div>
-            </div>
 
-            <div className="mt-2 flex justify-end">
-              <Button
-                type="submit"
-                size="lg"
-              >
-                进入参谋台
-                <ArrowRight className="size-5" />
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="assistantId">
+                  Agent ID<span className="text-rose-500">*</span>
+                </Label>
+                <p className="text-muted-foreground text-sm">
+                  用于读取历史议题并发起运行的 Graph 或 Assistant 标识。
+                </p>
+                <Input
+                  id="assistantId"
+                  name="assistantId"
+                  className="bg-background"
+                  defaultValue={assistantId || DEFAULT_ASSISTANT_ID}
+                  required
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="apiKey">开发 API Key</Label>
+                <p className="text-muted-foreground text-sm">
+                  本地服务不需要。此值仅保存在浏览器本地，用于开发部署鉴权。
+                </p>
+                <PasswordInput
+                  id="apiKey"
+                  name="apiKey"
+                  defaultValue={apiKey ?? ""}
+                  className="bg-background"
+                  placeholder="lsv2_pt_..."
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1">
+                    <Label htmlFor="agentBuilderEnabled">
+                      Agent Builder 部署
+                    </Label>
+                    <p className="text-muted-foreground text-sm">
+                      仅在使用 Agent Builder 部署时开启。
+                    </p>
+                  </div>
+                  <Switch
+                    id="agentBuilderEnabled"
+                    checked={isAgentBuilder}
+                    onCheckedChange={setIsAgentBuilder}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <Button
+                  type="submit"
+                  size="lg"
+                >
+                  进入参谋台
+                  <ArrowRight className="size-5" />
+                </Button>
+              </div>
+            </form>
+          </GlassThick>
+        </main>
+      </StarGridBackground>
     );
   }
 

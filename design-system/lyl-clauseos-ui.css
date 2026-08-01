@@ -8,6 +8,9 @@
   --lyl-bg-content-raised: #111419;
   --lyl-bg-sidebar: rgba(8,10,13,.76);
   --lyl-dot: rgba(255,255,255,.026);
+  --lyl-ambient-texture: url("/assets/optics/clauseos-caustic-light.png");
+  --lyl-caustic-texture: url("/assets/optics/clauseos-caustic-light.png");
+  --lyl-prism-texture: url("/assets/optics/clauseos-prism-dispersion.png");
 
   /* Text */
   --lyl-text-1: #f3f5f7;
@@ -105,9 +108,11 @@ body {
   font-family: var(--lyl-font-ui);
   background-color: var(--lyl-bg-void);
   background-image:
+    var(--lyl-ambient-texture),
     radial-gradient(circle at 1px 1px, var(--lyl-dot) 1px, transparent 0),
     radial-gradient(ellipse at 68% 5%, rgba(255,255,255,.018), transparent 38%);
-  background-size: 18px 18px, 100% 100%;
+  background-size: cover, 18px 18px, 100% 100%;
+  background-blend-mode: screen, normal, normal;
 }
 
 ::selection { background: rgba(66,227,132,.22); color: #fff; }
@@ -154,7 +159,7 @@ body {
 }
 
 /* Environment */
-.lyl-star-grid { min-height:100vh; background-color:var(--lyl-bg-void); background-image:radial-gradient(circle at 1px 1px,var(--lyl-dot) 1px,transparent 0); background-size:18px 18px; }
+.lyl-star-grid { min-height:100vh; background-color:var(--lyl-bg-void); background-image:var(--lyl-ambient-texture),radial-gradient(circle at 1px 1px,var(--lyl-dot) 1px,transparent 0); background-size:cover,18px 18px; background-blend-mode:screen,normal; }
 .lyl-content-surface { background:var(--lyl-bg-content); border:1px solid var(--lyl-border-content); }
 
 /* Buttons */

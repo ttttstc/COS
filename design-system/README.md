@@ -9,6 +9,10 @@
 - `control-gallery.html`：可交互的控件总览，可直接用浏览器打开。
 - `assets/`：可复用 SVG 背景和局部虹彩边缘素材。
 
+生产光学贴图位于 `apps/web/public/assets/optics/`。焦散贴图只用于环境白光，
+棱镜贴图通过 screen 混合和角点裁切用于玻璃入射/出射边，二者由
+`lyl-clauseos-ui.css` 中的语义 Token 统一引用。
+
 ## 使用原则
 
 1. Codex 应将 `lyl-clauseos-ui.css` 按 Token、Primitive、Component 层拆入 `apps/web/src/styles/`，不要在生产代码直接长期引用本目录。

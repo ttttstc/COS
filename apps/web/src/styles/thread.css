@@ -1,3 +1,30 @@
+.cos-stream-setup,
+.cos-stream-setup > .lyl-star-grid__content {
+  min-height: 100dvh;
+}
+
+.cos-stream-setup__main {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: var(--lyl-space-6);
+}
+
+.cos-stream-setup__panel {
+  width: min(100%, 520px);
+  overflow: hidden;
+  border-radius: var(--lyl-radius-xl);
+}
+
+.cos-stream-setup__panel > .lyl-glass-surface__content {
+  display: flex;
+  flex-direction: column;
+}
+
+.cos-stream-setup__panel form {
+  background: rgba(3, 5, 8, 0.38);
+}
+
 .cos-thread-workspace .cos-workbench__workspace-scroll {
   overflow: hidden;
   padding: 0;

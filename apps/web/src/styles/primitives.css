@@ -511,6 +511,42 @@
   );
 }
 
+/* Generated optical passes provide the irregular energy falloff that a
+   stack of linear gradients cannot reproduce. The masks keep each pass local
+   to the requested physical corner and black disappears under screen blend. */
+.lyl-prism-corner-light {
+  inset: 0;
+  width: auto;
+  height: auto;
+  background-image: var(--lyl-prism-texture);
+  background-position: center;
+  background-size: 100% 100%;
+  filter: saturate(0.82) brightness(0.94);
+}
+
+.lyl-prism-corner-light::before,
+.lyl-prism-corner-light::after {
+  display: none;
+}
+
+.lyl-prism-corner-light[data-corner="top-right"] {
+  inset: 0;
+  background-position: 50% 87%;
+  background-size: 118% 118%;
+  clip-path: inset(0 0 70% 70%);
+}
+
+.lyl-prism-corner-light[data-corner="bottom-right"] {
+  inset: 0;
+  width: auto;
+  height: auto;
+  filter: saturate(0.74) brightness(0.92);
+  opacity: calc(var(--lyl-optics-prism-opacity) * 0.72);
+  background-position: 50% 25%;
+  background-size: 118% 118%;
+  clip-path: inset(70% 0 0 70%);
+}
+
 .lyl-content-surface {
   color: var(--lyl-text-1);
   border: 1px solid var(--lyl-border-content);
