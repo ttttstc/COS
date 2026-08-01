@@ -14,3 +14,4 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .langgraph_api/
+.data/
