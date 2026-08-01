@@ -94,12 +94,23 @@ def _bounded(value: object, default: int) -> int:
 def _score_0_to_5(value: object, default: int = 3) -> int:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return default
-    normalized = value / 20 if value > 5 else value
+    # Providers commonly emit either a 0-5 rubric, a 0-10 rubric, or a
+    # percentage. Preserve all three scales instead of treating 6-10 as 0-5.
+    if value <= 5:
+        normalized = value
+    elif value <= 10:
+        normalized = value / 2
+    else:
+        normalized = value / 20
     return max(0, min(5, round(normalized)))
 
 
 def _safe_display(response_text: str, fallback: str, payload: dict[str, object] | None) -> str:
-    """Keep malformed structured output out of the user-facing recommendation."""
+    """Keep malformed structured output out of the user-facing recommendation.
+
+    This helper is only used when parsing did not produce a usable structured
+    payload; valid ask/decide payloads get their own normalized display text.
+    """
 
     if payload or not response_text.strip():
         return fallback
@@ -111,6 +122,8 @@ def _safe_display(response_text: str, fallback: str, payload: dict[str, object] 
 def infer_scope(question: str, explicit: object = None) -> Literal["local", "global"]:
     if explicit in {"local", "global"}:
         return explicit
+    if any(word in question for word in ("近期", "今年", "本月", "下月", "本周", "今天", "眼前")):
+        return "local"
     return (
         "global"
         if any(word in question for word in ("长期", "战略", "全局", "整体", "年度", "方向"))
@@ -120,10 +133,22 @@ def infer_scope(question: str, explicit: object = None) -> Literal["local", "glo
 
 def classify_problem(question: str, mode: str) -> ProblemReason:
     normalized = question.strip()
+    goal_unclear_words = (
+        "不清楚目标",
+        "目标不清楚",
+        "目标不明确",
+        "没想清",
+        "不知道要达成",
+        "不知道目标",
+    )
     if (
         not normalized
         or normalized in {"怎么办", "下一步", "怎么看", "帮我决定"}
-        or any(word in normalized for word in ("不清楚目标", "没想清", "不知道要达成"))
+        or (
+            any(word in normalized for word in goal_unclear_words)
+            and "清楚目标" not in normalized
+            and "目标清晰" not in normalized
+        )
     ):
         return "goal_unclear"
     if any(word in normalized for word in ("拖延", "害怕", "不敢", "卡住", "迟迟", "阻力", "启动不了")):
@@ -278,6 +303,28 @@ def _fallback_action(reason: ProblemReason) -> ActionCandidate:
     return candidates[reason]
 
 
+def was_reported_now(state: CounselState) -> bool:
+    """Return whether this persisted counsel state contains a report-now choice."""
+
+    return any(
+        isinstance(item, dict) and item.get("selection") == "report_now"
+        for item in state.get("interrupt_decisions", [])
+    )
+
+
+def normalize_summary(payload: dict[str, object] | None, response_text: str) -> str:
+    """Extract a safe summary for modes whose full Skill is not implemented."""
+
+    summary = _text(payload.get("summary")) if payload else None
+    if summary:
+        return summary
+    return _safe_display(
+        response_text,
+        "暂时无法形成可展示的建议，请补充更多上下文。",
+        payload,
+    )
+
+
 def normalize_ask(
     state: CounselState,
     payload: dict[str, object] | None,
@@ -324,10 +371,8 @@ def normalize_ask(
     description = _text(data.get("action_description")) or selected.description
     title = _text(data.get("action_title")) or selected.title
     display_text = description if payload else _safe_display(response_text, description, payload)
-    reported_now = any(
-        isinstance(item, dict) and item.get("selection") == "report_now"
-        for item in state.get("interrupt_decisions", [])
-    )
+    reported_now = was_reported_now(state)
+    state_confidence = state.get("confidence")
     updates: dict[str, object] = {
         "scope": infer_scope(state.get("raw_request", ""), data.get("scope") or state.get("scope")),
         "problem_reason": reason,
@@ -353,7 +398,10 @@ def normalize_ask(
         or state.get("main_contradiction")
         or contradiction_for(reason, "ask"),
         "current_stage": _text(data.get("current_stage")) or "执行最小验证",
-        "confidence": _bounded(data.get("confidence"), state.get("confidence") or 60),
+        "confidence": _bounded(
+            data.get("confidence"),
+            state_confidence if isinstance(state_confidence, (int, float)) else 60,
+        ),
     }
     return updates, display_text
 
@@ -376,14 +424,15 @@ def normalize_decide(
     recommended = data.get("recommended_option_id")
     if not isinstance(recommended, str) or recommended not in {item.id for item in options}:
         recommended = options[0].id
+    recommended_option = next(option for option in options if option.id == recommended)
     recommendation = _text(data.get("recommendation_reason"))
     if not recommendation:
         recommendation = (
-            f"优先选择“{options[0].title}”，先用可逆行动验证关键假设；"
-            "其他方案先暂缓，直到验证结果证明它们更值得投入。"
+            f"优先选择“{recommended_option.title}”，因为它能以较低成本先验证当前最关键的假设；"
+            "其他方案暂不优先，直到验证结果证明它们更值得投入。"
         )
     opposition = _strings(data.get("opposition_view")) or [
-        f"反方会质疑“{options[0].title}”是否已经有足够证据，建议把验证结果作为下一次改判依据。"
+        f"反方会质疑“{recommended_option.title}”是否已经有足够证据，建议把验证结果作为下一次改判依据。"
     ]
     unknowns = _strings(data.get("unknowns")) or _strings(state.get("unresolved_unknowns"))
     if not unknowns and state.get("need_research"):
@@ -402,10 +451,8 @@ def normalize_decide(
         or state.get("main_contradiction")
         or contradiction_for("no_clear_blocker", "decide")
     )
-    reported_now = any(
-        isinstance(item, dict) and item.get("selection") == "report_now"
-        for item in state.get("interrupt_decisions", [])
-    )
+    reported_now = was_reported_now(state)
+    state_confidence = state.get("confidence")
     updates: dict[str, object] = {
         "decision_question": _text(data.get("decision_question"))
         or state.get("decision_question")
@@ -420,7 +467,10 @@ def normalize_decide(
         "recommended_option_id": recommended,
         "recommendation_reason": recommendation,
         "main_contradiction": main_contradiction,
-        "confidence": _bounded(data.get("confidence"), state.get("confidence") or 60),
+        "confidence": _bounded(
+            data.get("confidence"),
+            state_confidence if isinstance(state_confidence, (int, float)) else 60,
+        ),
         "reconsider_when": _strings(data.get("reconsider_when"))
         or state.get("reconsider_when")
         or ["关键约束变化", "新证据改变方案排序"],

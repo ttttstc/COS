@@ -11,6 +11,12 @@ from langgraph.types import Command
 from lyl_agent.artifacts import CounselArtifact, DecisionCard, NextActionCard
 from lyl_agent.graph import build_graph
 from lyl_agent.memory import MemoryRepository
+from lyl_agent.reasoning import (
+    classify_problem,
+    infer_scope,
+    normalize_ask,
+    normalize_decide,
+)
 from lyl_agent.settings import load_settings
 
 
@@ -37,6 +43,85 @@ async def run_to_final(graph: object, prompt: str, mode: str, thread_id: str) ->
             context={"mode": mode},
         )
     return result
+
+
+@pytest.mark.parametrize(
+    ("prompt", "reason"),
+    [
+        ("目标不清楚，我不知道下一步", "goal_unclear"),
+        ("目标不明确，需要先界定", "goal_unclear"),
+        ("我清楚目标但不知道先做什么", "no_clear_blocker"),
+    ],
+)
+def test_problem_classification_handles_goal_wording_boundaries(
+    prompt: str,
+    reason: str,
+) -> None:
+    assert classify_problem(prompt, "ask") == reason
+
+
+def test_scope_treats_current_year_direction_as_local() -> None:
+    assert infer_scope("今年方向先做一次用户访谈") == "local"
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "goal_unclear",
+        "information_insufficient",
+        "too_many_options",
+        "action_resistance",
+        "no_clear_blocker",
+    ],
+)
+def test_fallback_action_exists_for_each_problem_reason(reason: str) -> None:
+    updates, display = normalize_ask(
+        {"raw_request": "下一步做什么？", "problem_reason": reason},
+        None,
+        "not structured JSON",
+    )
+    assert updates["candidate_actions"]
+    assert updates["selected_action_id"]
+    assert updates["completion_criteria"]
+    assert display
+
+
+def test_model_0_to_10_scores_are_normalized_to_the_five_point_rubric() -> None:
+    updates, _ = normalize_ask(
+        {"raw_request": "下一步做什么？"},
+        {
+            "candidate_actions": [
+                {
+                    "id": "test",
+                    "title": "测试",
+                    "description": "做一次测试",
+                    "impact": 8,
+                    "uncertainty_reduction": 6,
+                }
+            ]
+        },
+        "",
+    )
+    candidate = updates["candidate_actions"][0]
+    assert candidate["impact"] == 4
+    assert candidate["uncertainty_reduction"] == 3
+
+
+def test_partial_decide_payload_fallbacks_follow_selected_option() -> None:
+    updates, display = normalize_decide(
+        {"raw_request": "该选哪个方案？"},
+        {
+            "options": [
+                {"id": "a", "title": "方案 A", "summary": "A"},
+                {"id": "b", "title": "方案 B", "summary": "B"},
+            ],
+            "recommended_option_id": "b",
+        },
+        "",
+    )
+    assert "方案 B" in updates["recommendation_reason"]
+    assert "方案 B" in updates["opposition_view"][0]
+    assert display == updates["recommendation_reason"]
 
 
 @pytest.mark.asyncio
@@ -217,6 +302,8 @@ async def test_structured_model_output_populates_both_skill_cards(tmp_path: Path
     assert isinstance(ask_card, NextActionCard)
     assert ask_card.action_title == "访谈一位用户"
     assert ask_card.completion_criteria == ["完成一次访谈"]
+    assert ask_card.confidence == 82
+    assert result["messages"][-1].content == ask_card.action_description
 
     decide_payload = {
         "decision_question": "如何用最低成本验证用户需求？",
@@ -261,3 +348,5 @@ async def test_structured_model_output_populates_both_skill_cards(tmp_path: Path
     assert decide_card.decision_question == "如何用最低成本验证用户需求？"
     assert decide_card.recommended_option_id == "prototype"
     assert len(decide_card.options) == 2
+    assert len(decide_card.opposition_view) >= 1
+    assert result["messages"][-1].content == decide_card.recommendation_reason

@@ -31,7 +31,9 @@ from lyl_agent.reasoning import (
     infer_scope,
     normalize_ask,
     normalize_decide,
+    normalize_summary,
     parse_json_object,
+    was_reported_now,
 )
 from lyl_agent.settings import load_memory_db_path, load_settings
 from lyl_agent.state import CounselContext, CounselMode, CounselState
@@ -50,6 +52,31 @@ STAGE_TITLES = {
 }
 MAX_ACTIVE_INTERRUPTS = 2
 CounselNode = Callable[..., Awaitable[CounselState]]
+
+
+def _reset_per_turn_fields() -> dict[str, object]:
+    """Clear derived counsel fields while preserving thread-level history."""
+
+    return {
+        "problem_reason": None,
+        "objectives": [],
+        "constraints": [],
+        "candidate_actions": [],
+        "selected_action_id": None,
+        "action_title": None,
+        "action_description": None,
+        "completion_criteria": [],
+        "pause_or_stop": [],
+        "facts": [],
+        "assumptions": [],
+        "decision_question": None,
+        "recommended_option_id": None,
+        "recommendation_reason": None,
+        "options": [],
+        "opposition_view": [],
+        "unresolved_unknowns": [],
+        "value_tradeoffs": [],
+    }
 
 
 @lru_cache(maxsize=4)
@@ -177,22 +204,7 @@ async def intake(state: CounselState) -> CounselState:
         reset_stages=True,
         raw_request=question,
         error=None,
-        problem_reason=None,
-        candidate_actions=[],
-        selected_action_id=None,
-        action_title=None,
-        action_description=None,
-        completion_criteria=[],
-        pause_or_stop=[],
-        facts=[],
-        assumptions=[],
-        decision_question=None,
-        recommended_option_id=None,
-        recommendation_reason=None,
-        options=[],
-        opposition_view=[],
-        unresolved_unknowns=[],
-        value_tradeoffs=[],
+        **_reset_per_turn_fields(),
     )
 
 
@@ -265,6 +277,7 @@ async def retrieve_context(
         "user_id": user_id,
         "selected_memory_ids": memory_ids,
         "context_snapshot": snapshot_data,
+        "historical_patterns": snapshot_data.get("patterns", []),
     }
     if thread_id:
         updates["thread_id"] = thread_id
@@ -490,6 +503,12 @@ async def synthesize_counsel(
             + json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
             + "\n用户对本轮关键取舍的裁决："
             + json.dumps(decisions, ensure_ascii=False, separators=(",", ":"))
+            + "\n历史模式（仅作可追溯参考）："
+            + json.dumps(
+                state.get("historical_patterns", []),
+                ensure_ascii=False,
+                separators=(",", ":"),
+            )
             + "\n当前用户请求（已清洗）："
             + state.get("raw_request", "")
             + "\nGraph 初步判断："
@@ -519,26 +538,32 @@ async def synthesize_counsel(
     elif mode == "decide":
         reasoning_updates, display_text = normalize_decide(state, payload, response_text)
     else:
-        reasoning_updates, display_text = {}, response_text
+        reasoning_updates, display_text = {}, normalize_summary(payload, response_text)
     enriched_state = cast(CounselState, {**state, **reasoning_updates})
     final, versions = finalize_artifact(enriched_state, display_text)
     summary = artifact_summary(final)
     card = final.tabs.counsel
-    return _append_stage(
-        enriched_state,
-        "synthesize_counsel",
-        "已形成基础建议",
-        messages=[response],
-        recommendation={
+    # Keep provider-specific JSON out of the persisted chat transcript. The
+    # artifact retains the normalized structured fields for the UI.
+    stage_updates: dict[str, object] = {
+        **reasoning_updates,
+        "messages": [AIMessage(content=display_text)],
+        "recommendation": {
             "kind": "artifact",
             "mode": mode,
             "summary": summary,
         },
-        main_contradiction=card.main_contradiction,
-        confidence=card.confidence,
-        reconsider_when=card.reconsider_when,
-        artifact=final.model_dump(mode="json"),
-        artifact_versions=versions,
+        "main_contradiction": card.main_contradiction,
+        "confidence": card.confidence,
+        "reconsider_when": card.reconsider_when,
+        "artifact": final.model_dump(mode="json"),
+        "artifact_versions": versions,
+    }
+    return _append_stage(
+        enriched_state,
+        "synthesize_counsel",
+        "已形成基础建议",
+        **stage_updates,
     )
 
 
@@ -546,6 +571,20 @@ def _route_after_node(state: CounselState) -> Literal["continue", "end"]:
     """Stop the run once a node has produced the shared degraded result."""
 
     return "end" if state.get("error") else "continue"
+
+
+def _route_after_synthesis(state: CounselState) -> Literal["continue", "end"]:
+    """Give model-discovered research needs the same approval gate as heuristics."""
+
+    if state.get("error"):
+        return "end"
+    if (
+        state.get("need_research")
+        and state.get("interrupt_count", 0) < MAX_ACTIVE_INTERRUPTS
+        and not was_reported_now(state)
+    ):
+        return "continue"
+    return "end"
 
 
 def build_graph(
@@ -613,7 +652,11 @@ def build_graph(
         _route_after_node,
         {"continue": "synthesize_counsel", "end": END},
     )
-    builder.add_edge("synthesize_counsel", END)
+    builder.add_conditional_edges(
+        "synthesize_counsel",
+        _route_after_synthesis,
+        {"continue": "request_decision", "end": END},
+    )
     return builder.compile(checkpointer=checkpointer)
 
 

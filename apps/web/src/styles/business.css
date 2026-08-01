@@ -787,7 +787,7 @@
 }
 
 .cos-counsel-details__option[data-recommended="true"] {
-  border-color: var(--lyl-edge-green);
+  box-shadow: inset 2px 0 0 var(--lyl-green-500);
 }
 
 .cos-counsel-details__option-heading {

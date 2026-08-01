@@ -1,11 +1,14 @@
 from importlib import import_module
+import json
 from typing import cast
 
 import pytest
 from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.runtime import Runtime
+from langgraph.types import Command
 
 import lyl_agent.models as models_module
 from lyl_agent.graph import (
@@ -95,6 +98,65 @@ async def test_graph_injects_context_snapshot_into_model_input(tmp_path: object)
 
     assert isinstance(model.messages[0], SystemMessage)
     assert "ship memory" in str(model.messages[0].content)
+    assert "历史模式" in str(model.messages[0].content)
+
+
+@pytest.mark.asyncio
+async def test_non_ask_decide_modes_extract_summary_and_hide_provider_json() -> None:
+    graph = build_graph(
+        FakeListChatModel(
+            responses=[json.dumps({"summary": "先核对一个决定性未知。"}, ensure_ascii=False)]
+        )
+    )
+
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="请诊断这个反复出现的问题")]},
+        context={"mode": "diagnose"},
+    )
+
+    assert result["messages"][-1].content == "先核对一个决定性未知。"
+    assert result["recommendation"]["summary"] == "先核对一个决定性未知。"
+    assert "\"summary\"" not in result["messages"][-1].content
+
+
+@pytest.mark.asyncio
+async def test_model_discovered_research_need_returns_to_approval_gate() -> None:
+    payload = json.dumps(
+        {
+            "candidate_actions": [
+                {
+                    "id": "verify",
+                    "title": "核对关键未知",
+                    "description": "完成一次最小验证",
+                    "completion_criteria": ["记录验证结果"],
+                }
+            ],
+            "need_research": True,
+        },
+        ensure_ascii=False,
+    )
+    graph = build_graph(
+        FakeListChatModel(responses=[payload, payload]),
+        checkpointer=InMemorySaver(),
+    )
+    config = {"configurable": {"thread_id": "thread-model-research-need"}}
+
+    paused = await graph.ainvoke(
+        {"messages": [HumanMessage(content="先帮我规划一个验证动作")]},
+        config,
+        context={"mode": "ask"},
+    )
+
+    assert paused["__interrupt__"][0].value["type"] == "research_approval"
+    pending = paused["__interrupt__"][0]
+    result = await graph.ainvoke(
+        Command(resume={pending.id: "report_now"}),
+        config,
+        context={"mode": "ask"},
+    )
+
+    assert "__interrupt__" not in result
+    assert result["need_research"] is False
 
 
 @pytest.mark.asyncio

@@ -39,9 +39,10 @@ class CounselContext(TypedDict, total=False):
 class CounselState(TypedDict, total=False):
     """MVP state shared by all nodes in the single counsel graph.
 
-    Issue #5 currently writes ``user_id``, ``thread_id``,
-    ``selected_memory_ids``, and ``context_snapshot`` during retrieval. The
-    remaining fields are SPEC §13 placeholders for later counsel modes.
+    Issue #5 writes the retrieval fields (``user_id``, ``thread_id``,
+    ``selected_memory_ids``, and ``context_snapshot``); Issues #8 and #9 write
+    the ask/decide reasoning fields below. Other mode-specific fields remain
+    placeholders for their later Skills.
     """
 
     messages: Annotated[list[AnyMessage], add_messages]
