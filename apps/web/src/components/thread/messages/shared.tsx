@@ -1,13 +1,13 @@
 import {
-  XIcon,
-  SendHorizontal,
-  RefreshCcw,
+  X,
+  PaperPlaneRight,
+  ArrowClockwise,
   Pencil,
   Copy,
-  CopyCheck,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+  Check,
+  CaretLeft,
+  CaretRight,
+} from "@/components/icons/lyl-icons";
 import { TooltipIconButton } from "../tooltip-icon-button";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -48,7 +48,7 @@ function ContentCopyable({
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.15 }}
           >
-            <CopyCheck className="text-green-500" />
+            <Check className="text-green-500" />
           </motion.div>
         ) : (
           <motion.div
@@ -93,7 +93,7 @@ export function BranchSwitcher({
         }}
         disabled={isLoading}
       >
-        <ChevronLeft />
+        <CaretLeft />
       </Button>
       <span className="text-sm">
         {index + 1} / {branchOptions.length}
@@ -109,7 +109,7 @@ export function BranchSwitcher({
         }}
         disabled={isLoading}
       >
-        <ChevronRight />
+        <CaretRight />
       </Button>
     </div>
   );
@@ -174,7 +174,7 @@ export function CommandBar({
             setIsEditing(false);
           }}
         >
-          <XIcon />
+          <X />
         </TooltipIconButton>
         <TooltipIconButton
           disabled={isLoading}
@@ -182,7 +182,7 @@ export function CommandBar({
           variant="secondary"
           onClick={handleSubmitEdit}
         >
-          <SendHorizontal />
+          <PaperPlaneRight />
         </TooltipIconButton>
       </div>
     );
@@ -201,7 +201,7 @@ export function CommandBar({
           variant="ghost"
           onClick={handleRegenerate}
         >
-          <RefreshCcw />
+          <ArrowClockwise />
         </TooltipIconButton>
       )}
       {showEdit && (

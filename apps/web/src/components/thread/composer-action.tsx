@@ -1,4 +1,4 @@
-import { LoaderCircle } from "lucide-react";
+import { SpinnerGap } from "@/components/icons/lyl-icons";
 
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +20,7 @@ export function ComposerAction({
         onClick={onStop}
         className="ml-auto"
       >
-        <LoaderCircle className="h-4 w-4 animate-spin" />
+        <SpinnerGap className="h-4 w-4 animate-spin" />
         Cancel
       </Button>
     );

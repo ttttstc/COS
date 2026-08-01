@@ -1,13 +1,13 @@
 /* Base markdown styles */
 .markdown-content code:not(pre code) {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: color-mix(in srgb, var(--lyl-text-1) 7%, transparent);
   padding: 0.2em 0.4em;
-  border-radius: 3px;
+  border-radius: var(--lyl-radius-xs);
   font-size: 0.9em;
 }
 
 .markdown-content a {
-  color: #0070f3;
+  color: var(--lyl-blue);
   text-decoration: none;
 }
 
@@ -16,9 +16,9 @@
 }
 
 .markdown-content blockquote {
-  border-left: 4px solid #ddd;
+  border-left: 2px solid var(--lyl-border-control);
   padding-left: 1rem;
-  color: #666;
+  color: var(--lyl-text-2);
 }
 
 .markdown-content pre {
@@ -32,14 +32,14 @@
 
 .markdown-content th,
 .markdown-content td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--lyl-border-content);
   padding: 8px;
 }
 
 .markdown-content th {
-  background-color: #f2f2f2;
+  background-color: var(--lyl-bg-content-raised);
 }
 
 .markdown-content tr:nth-child(even) {
-  background-color: #f9f9f9;
+  background-color: color-mix(in srgb, var(--lyl-text-1) 2%, transparent);
 }

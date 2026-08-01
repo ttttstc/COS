@@ -1,5 +1,6 @@
 import {
   getCounselMode,
+  isCounselMode,
   readCounselMode,
   type CounselMode,
 } from "@/lib/counsel-mode";
@@ -15,6 +16,11 @@ const STATUS_LABELS: Record<ThreadStatus, string> = {
 };
 
 export function getThreadMode(thread: Thread): CounselMode {
+  const values = thread.values;
+  if (typeof values === "object" && values !== null && !Array.isArray(values)) {
+    const mode = (values as Record<string, unknown>).mode;
+    if (isCounselMode(mode)) return mode;
+  }
   return readCounselMode(thread.metadata?.mode);
 }
 

@@ -84,9 +84,9 @@ export default function useInterruptedActions({
     }
   }, [interrupt]);
 
-  const resumeRun = (decisions: Decision[]): boolean => {
+  const resumeRun = async (decisions: Decision[]): Promise<boolean> => {
     try {
-      thread.submit(
+      await thread.submit(
         {},
         {
           command: {
@@ -94,6 +94,9 @@ export default function useInterruptedActions({
               decisions,
             },
           },
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
         },
       );
       return true;
@@ -139,7 +142,7 @@ export default function useInterruptedActions({
       setLoading(true);
       setStreaming(true);
 
-      const resumedSuccessfully = resumeRun([decision]);
+      const resumedSuccessfully = await resumeRun([decision]);
       if (!resumedSuccessfully) {
         errorOccurred = true;
         return;
@@ -188,23 +191,26 @@ export default function useInterruptedActions({
     initialHumanInterruptEditValue.current = {};
 
     try {
-      thread.submit(
+      await thread.submit(
         {},
         {
           command: {
             goto: END,
           },
+          streamMode: ["values"],
+          streamSubgraphs: true,
+          streamResumable: true,
         },
       );
 
-      toast("Success", {
-        description: "Marked thread as resolved.",
+      toast("议题已结束", {
+        description: "已将当前议题标记为已解决。",
         duration: 3000,
       });
     } catch (error) {
       console.error("Error marking thread as resolved", error);
-      toast.error("Error", {
-        description: "Failed to mark thread as resolved.",
+      toast.error("结束议题失败", {
+        description: "暂时无法结束当前议题，请重试。",
         richColors: true,
         closeButton: true,
         duration: 3000,

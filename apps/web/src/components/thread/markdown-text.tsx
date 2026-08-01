@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import { FC, memo, useState } from "react";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { Check, Copy } from "@/components/icons/lyl-icons";
 import { SyntaxHighlighter } from "@/components/thread/syntax-highlighter";
 
 import { TooltipIconButton } from "@/components/thread/tooltip-icon-button";
@@ -53,8 +53,8 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
         tooltip="Copy"
         onClick={onCopy}
       >
-        {!isCopied && <CopyIcon />}
-        {isCopied && <CheckIcon />}
+        {!isCopied && <Copy />}
+        {isCopied && <Check />}
       </TooltipIconButton>
     </div>
   );

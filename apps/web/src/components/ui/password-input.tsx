@@ -5,7 +5,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "./input";
 import { Button } from "./button";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
+import { Eye, EyeSlash } from "@/components/icons/lyl-icons";
 
 export const PasswordInput = React.forwardRef<
   HTMLInputElement,
@@ -29,12 +29,12 @@ export const PasswordInput = React.forwardRef<
         onClick={() => setShowPassword((prev) => !prev)}
       >
         {showPassword ? (
-          <EyeIcon
+          <Eye
             className="h-4 w-4"
             aria-hidden="true"
           />
         ) : (
-          <EyeOffIcon
+          <EyeSlash
             className="h-4 w-4"
             aria-hidden="true"
           />

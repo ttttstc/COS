@@ -1,5 +1,5 @@
 import React from "react";
-import { File, X as XIcon } from "lucide-react";
+import { File, X } from "@/components/icons/lyl-icons";
 import { ContentBlock } from "@langchain/core/messages";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -25,26 +25,29 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
     block.mimeType.startsWith("image/")
   ) {
     const url = `data:${block.mimeType};base64,${block.data}`;
-    let imgClass: string = "rounded-md object-cover h-16 w-16 text-lg";
-    if (size === "sm") imgClass = "rounded-md object-cover h-10 w-10 text-base";
-    if (size === "lg") imgClass = "rounded-md object-cover h-24 w-24 text-xl";
     return (
-      <div className={cn("relative inline-block", className)}>
+      <div
+        className={cn(
+          "cos-multimodal-attachment cos-multimodal-attachment--image",
+          `cos-multimodal-attachment--${size}`,
+          className,
+        )}
+      >
         <Image
           src={url}
           alt={String(block.metadata?.name || "uploaded image")}
-          className={imgClass}
+          className="cos-multimodal-attachment__preview"
           width={size === "sm" ? 16 : size === "md" ? 32 : 48}
           height={size === "sm" ? 16 : size === "md" ? 32 : 48}
         />
         {removable && (
           <button
             type="button"
-            className="absolute top-1 right-1 z-10 rounded-full bg-gray-500 text-white hover:bg-gray-700"
+            className="cos-multimodal-attachment__remove"
             onClick={onRemove}
-            aria-label="Remove image"
+            aria-label="移除图片"
           >
-            <XIcon className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -58,32 +61,24 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
     return (
       <div
         className={cn(
-          "relative flex items-start gap-2 rounded-md border bg-gray-100 px-3 py-2",
+          "cos-multimodal-attachment cos-multimodal-attachment--file",
+          `cos-multimodal-attachment--${size}`,
           className,
         )}
       >
-        <div className="flex flex-shrink-0 flex-col items-start justify-start">
-          <File
-            className={cn(
-              "text-teal-700",
-              size === "sm" ? "h-5 w-5" : "h-7 w-7",
-            )}
-          />
-        </div>
-        <span
-          className={cn("min-w-0 flex-1 text-sm break-all text-gray-800")}
-          style={{ wordBreak: "break-all", whiteSpace: "pre-wrap" }}
-        >
-          {String(filename)}
-        </span>
+        <File
+          className="cos-multimodal-attachment__icon"
+          aria-hidden="true"
+        />
+        <span className="cos-multimodal-attachment__name">{String(filename)}</span>
         {removable && (
           <button
             type="button"
-            className="ml-2 self-start rounded-full bg-gray-200 p-1 text-teal-700 hover:bg-gray-300"
+            className="cos-multimodal-attachment__remove"
             onClick={onRemove}
-            aria-label="Remove PDF"
+            aria-label="移除 PDF"
           >
-            <XIcon className="h-4 w-4" />
+            <X className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -94,20 +89,24 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-md border bg-gray-100 px-3 py-2 text-gray-500",
+        "cos-multimodal-attachment cos-multimodal-attachment--file",
+        `cos-multimodal-attachment--${size}`,
         className,
       )}
     >
-      <File className="h-5 w-5 flex-shrink-0" />
-      <span className="truncate text-xs">Unsupported file type</span>
+      <File
+        className="cos-multimodal-attachment__icon"
+        aria-hidden="true"
+      />
+      <span className="cos-multimodal-attachment__name">不支持的文件类型</span>
       {removable && (
         <button
           type="button"
-          className="ml-2 rounded-full bg-gray-200 p-1 text-gray-500 hover:bg-gray-300"
+          className="cos-multimodal-attachment__remove"
           onClick={onRemove}
-          aria-label="Remove file"
+          aria-label="移除文件"
         >
-          <XIcon className="h-4 w-4" />
+          <X className="h-4 w-4" />
         </button>
       )}
     </div>

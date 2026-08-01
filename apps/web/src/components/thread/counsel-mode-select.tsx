@@ -4,7 +4,7 @@ import {
   getCounselMode,
   type CounselMode,
 } from "@/lib/counsel-mode";
-import { X } from "lucide-react";
+import { X } from "@/components/icons/lyl-icons";
 
 export function CounselModeSelect({
   mode,
