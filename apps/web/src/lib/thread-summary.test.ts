@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   getThreadMode,
   getThreadModeLabel,
+  getPendingInterruptCount,
   getThreadStatusLabel,
   getThreadUpdatedLabel,
 } from "./thread-summary";
@@ -44,5 +45,19 @@ describe("thread summaries", () => {
 
     expect(getThreadStatusLabel("interrupted")).toBe("待用户裁决");
     expect(getThreadUpdatedLabel("2026-07-28T04:05:00.000Z")).toBe("5 分钟前");
+  });
+
+  it("counts all pending decisions for issue history", () => {
+    expect(
+      getPendingInterruptCount(
+        makeThread({
+          status: "interrupted",
+          interrupts: {
+            root: [{ id: "one" }, { id: "two" }],
+            subgraph: [{ id: "three" }],
+          },
+        }),
+      ),
+    ).toBe(3);
   });
 });

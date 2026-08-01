@@ -134,6 +134,11 @@ LYL_MODEL_API_KEY=replace-locally
 LYL_MODEL_BASE_URL=
 ```
 
+For an OpenAI-compatible gateway, keep `LYL_MODEL_PROVIDER=openai`, set the
+gateway's model identifier in `LYL_MODEL`, and make `LYL_MODEL_BASE_URL` end at
+the API root (usually `/v1`). The provider field names the LangChain adapter,
+not the model family.
+
 Secrets stay in `apps/agent/.env`; never put a model key in a `NEXT_PUBLIC_*`
 variable.
 
@@ -155,7 +160,15 @@ cd apps/agent
 uv run pytest
 ```
 
-测试覆盖五种模式、手动模式优先、自动模式判断、后续调研提示和模型故障降级。
+测试覆盖模式路由、三类 Interrupt、暂停/恢复幂等、Artifact 流式草稿与版本冻结、
+模型故障降级。默认测试不产生远端调用。显式验证当前 `.env` 的真实模型：
+
+```powershell
+$env:LYL_LIVE_TEST='1'
+uv run pytest -m live
+```
+
+live 测试会通过完整 Graph 调用远端模型，可能产生费用；未设置开关时自动跳过。
 
 With the Agent server running, execute the repeatable Thread smoke test:
 

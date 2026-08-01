@@ -30,6 +30,7 @@ class CounselContext(TypedDict, total=False):
     thread_id: str
     selected_memory_ids: list[str]
     file_ids: list[str]
+    value_tradeoffs: list[str]
 
 
 class CounselState(TypedDict, total=False):
@@ -68,6 +69,9 @@ class CounselState(TypedDict, total=False):
     recommendation: dict[str, object] | None
     ui: list[dict[str, object]]
     artifact: dict[str, object] | None
+    artifact_versions: list[dict[str, object]]
+    interrupt_count: int
+    interrupt_decisions: list[dict[str, object]]
     memory_proposals: list[dict[str, object]]
     decision_record_id: str | None
     feedback: dict[str, object] | None

@@ -37,6 +37,7 @@ describe("counsel state adapter", () => {
         context_snapshot: { source: "history" },
         historical_patterns: [{ id: "pattern-1" }, null],
         artifact: { type: "decision" },
+        artifact_versions: [{ version: 1 }, null, { version: 2 }],
         error: 404,
       }),
     ).toEqual({
@@ -60,6 +61,7 @@ describe("counsel state adapter", () => {
       context_snapshot: { source: "history" },
       historical_patterns: [{ id: "pattern-1" }],
       artifact: { type: "decision" },
+      artifact_versions: [{ version: 1 }, { version: 2 }],
     });
 
     expect(parseCounselState(null)).toEqual({ messages: [] });

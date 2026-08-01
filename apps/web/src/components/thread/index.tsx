@@ -49,7 +49,11 @@ import {
   type ActiveCounselMode,
 } from "@/lib/counsel-mode";
 import { parseCounselState, toStageProgress } from "@/lib/counsel-state";
-import { getThreadMode, getThreadUpdatedLabel } from "@/lib/thread-summary";
+import {
+  getPendingInterruptCount,
+  getThreadMode,
+  getThreadUpdatedLabel,
+} from "@/lib/thread-summary";
 import { useWorkbenchPreferences } from "@/lib/workbench-preferences";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { useStreamContext } from "@/providers/Stream";
@@ -103,10 +107,7 @@ function getThreadTitle(thread: LangGraphThread): string {
 
 const RESEARCH_STAGE_IDS = new Set(["retrieve_context"]);
 
-function toIssueStatus(
-  status: ThreadStatus,
-  stageId?: string,
-): IssueStatus {
+function toIssueStatus(status: ThreadStatus, stageId?: string): IssueStatus {
   if (status === "busy")
     return stageId && RESEARCH_STAGE_IDS.has(stageId)
       ? "researching"
@@ -120,6 +121,7 @@ function toWorkbenchIssue(thread: LangGraphThread): WorkbenchIssue {
   const mode = getThreadMode(thread);
   const state = parseCounselState(thread.values);
   const stageId = state.stages?.at(-1)?.id ?? state.current_stage;
+  const pendingInterrupts = getPendingInterruptCount(thread);
   return {
     id: thread.thread_id,
     mode,
@@ -127,6 +129,7 @@ function toWorkbenchIssue(thread: LangGraphThread): WorkbenchIssue {
     title: getThreadTitle(thread),
     updatedAt: thread.updated_at,
     updatedLabel: getThreadUpdatedLabel(thread.updated_at),
+    ...(pendingInterrupts ? { unreadCount: pendingInterrupts } : {}),
   };
 }
 
@@ -159,6 +162,7 @@ export function Thread() {
   const [input, setInput] = useState("");
   const [commandOpen, setCommandOpen] = useState(false);
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
+  const [artifactVersion, setArtifactVersion] = useState<number | undefined>();
   const lastError = useRef<string | undefined>(undefined);
   const modeRestoredForThreads = useRef(new Set<string>());
   const previousMessageLength = useRef(0);
@@ -254,6 +258,7 @@ export function Thread() {
   const clearThreadContext = () => {
     closeArtifact();
     setArtifactContext({});
+    setArtifactVersion(undefined);
   };
 
   const startNewIssue = (nextMode = DEFAULT_COUNSEL_MODE) => {
@@ -267,12 +272,16 @@ export function Thread() {
   const selectIssue = (id: string) => {
     const selected = threads.find((thread) => thread.thread_id === id);
     if (selected) void setMode(getThreadMode(selected));
-    if (id !== threadId) void setThreadIdQuery(id);
+    if (id !== threadId) {
+      setArtifactVersion(undefined);
+      void setThreadIdQuery(id);
+    }
   };
 
   const handleSubmit = () => {
     if (!canSubmitMessage(input, contentBlocks, isLoading)) return;
     setFirstTokenReceived(false);
+    setArtifactVersion(undefined);
     const newHumanMessage: Message = {
       id: uuidv4(),
       type: "human",
@@ -308,6 +317,7 @@ export function Thread() {
   ) => {
     previousMessageLength.current -= 1;
     setFirstTokenReceived(false);
+    setArtifactVersion(undefined);
     stream.submit(undefined, {
       context: buildCounselRunContext(mode, artifactContext),
       checkpoint: parentCheckpoint,
@@ -341,7 +351,11 @@ export function Thread() {
   const hasNoAIOrToolMessages = !messages.some(
     (message) => message.type === "ai" || message.type === "tool",
   );
-  const materialView = createCounselMaterialView(stream.values);
+  const materialView = createCounselMaterialView(
+    stream.values,
+    artifactVersion,
+    setArtifactVersion,
+  );
   const materialPanel = preferences.materialPanel;
 
   const counselPanel = (

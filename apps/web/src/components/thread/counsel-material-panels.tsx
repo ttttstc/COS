@@ -5,6 +5,8 @@ import {
   ContextReferenceCard,
   InlineAlert,
   ResearchPlanCard,
+  Select,
+  StatusBadge,
   VerticalResearchProgress,
   type EvidenceRelation,
   type ProgressItem,
@@ -13,7 +15,9 @@ import {
   parseCounselState,
   toMaterialTabs,
   type CounselRecord,
+  type CounselState,
 } from "@/lib/counsel-state";
+import type { CounselArtifactView } from "@/lib/counsel-artifact";
 
 function text(record: CounselRecord | undefined, ...keys: string[]) {
   for (const key of keys) {
@@ -57,16 +61,134 @@ function relation(value: unknown): EvidenceRelation {
     : "context";
 }
 
-export function CounselPanel({ value }: { value: unknown }) {
-  const state = parseCounselState(value);
-  const material = toMaterialTabs(value).find((tab) => tab.id === "counsel");
+interface ArtifactCardProps {
+  artifact: CounselArtifactView;
+}
+
+function ArtifactSummary({ artifact }: ArtifactCardProps) {
+  return (
+    <CounselSummaryCard
+      currentStage={artifact.currentStage}
+      mainContradiction={artifact.mainContradiction}
+      recommendation={artifact.recommendation}
+      confidence={artifact.confidence}
+      changeConditions={artifact.changeConditions}
+      deferItems={artifact.deferItems}
+    />
+  );
+}
+
+export function NextActionCard(props: ArtifactCardProps) {
+  return <ArtifactSummary {...props} />;
+}
+
+export function DecisionCard(props: ArtifactCardProps) {
+  return <ArtifactSummary {...props} />;
+}
+
+export function DiagnosisCard(props: ArtifactCardProps) {
+  return <ArtifactSummary {...props} />;
+}
+
+function ResearchCard(props: ArtifactCardProps) {
+  return <ArtifactSummary {...props} />;
+}
+
+function ArtifactCard({ artifact }: ArtifactCardProps) {
+  if (artifact.artifactType === "next_action") {
+    return <NextActionCard artifact={artifact} />;
+  }
+  if (artifact.artifactType === "decision") {
+    return <DecisionCard artifact={artifact} />;
+  }
+  if (artifact.artifactType === "diagnosis") {
+    return <DiagnosisCard artifact={artifact} />;
+  }
+  return <ResearchCard artifact={artifact} />;
+}
+
+export function CounselPanel({
+  fallbackState,
+  artifact,
+  artifactError,
+  versions = [],
+  onVersionChange,
+}: {
+  fallbackState: CounselState;
+  artifact?: CounselArtifactView;
+  artifactError?: string;
+  versions?: CounselArtifactView[];
+  onVersionChange?: (version?: number) => void;
+}) {
+  const state = fallbackState;
+  const material = toMaterialTabs(state).find((tab) => tab.id === "counsel");
+  if (artifact) {
+    const artifactStatus =
+      artifact.status === "draft"
+        ? "流式草稿"
+        : artifact.status === "final"
+          ? "最终版本"
+          : "旧版本";
+    return (
+      <div className="cos-material-stack">
+        {artifactError && (
+          <InlineAlert
+            tone="error"
+            title="建议卡格式异常"
+          >
+            {artifactError}，已降级展示可用内容。
+          </InlineAlert>
+        )}
+        <div className="cos-artifact-version">
+          <StatusBadge
+            tone={
+              artifact.status === "draft"
+                ? "info"
+                : artifact.status === "final"
+                  ? "success"
+                  : "neutral"
+            }
+          >
+            v{artifact.version} · {artifactStatus}
+          </StatusBadge>
+          {versions.length > 1 && (
+            <Select
+              aria-label="查看建议版本"
+              value={String(artifact.version)}
+              options={[...versions]
+                .sort((left, right) => right.version - left.version)
+                .map((item) => ({
+                  value: String(item.version),
+                  label: `v${item.version} · ${item.status === "superseded" ? "旧版本" : item.status === "draft" ? "草稿" : "最终版本"}`,
+                }))}
+              onChange={(event) =>
+                onVersionChange?.(Number(event.target.value))
+              }
+            />
+          )}
+          {artifact.changeReason && <p>改判原因：{artifact.changeReason}</p>}
+        </div>
+        <ArtifactCard artifact={artifact} />
+      </div>
+    );
+  }
   if (!material || material.empty) {
     return (
-      <EmptyState
-        compact
-        title="尚未形成参谋结论"
-        description="参谋完成分析后，主要矛盾、明确建议与改判条件会出现在这里。"
-      />
+      <div className="cos-material-stack">
+        {artifactError && (
+          <InlineAlert
+            tone="error"
+            title="建议卡格式异常"
+          >
+            {artifactError}，已降级展示可用内容。
+          </InlineAlert>
+        )}
+        <EmptyState
+          compact
+          title="尚未形成参谋结论"
+          description="参谋完成分析后，主要矛盾、明确建议与改判条件会出现在这里。"
+        />
+      </div>
     );
   }
 
@@ -144,9 +266,15 @@ export function EvidencePanel({ records }: { records: CounselRecord[] }) {
   );
 }
 
-export function HistoryPanel({ value }: { value: unknown }) {
+export function HistoryPanel({
+  value,
+  records: artifactRecords,
+}: {
+  value: unknown;
+  records?: CounselRecord[];
+}) {
   const state = parseCounselState(value);
-  const records = [
+  const records = artifactRecords ?? [
     ...(state.context_snapshot ? [state.context_snapshot] : []),
     ...(state.historical_patterns ?? []),
   ];

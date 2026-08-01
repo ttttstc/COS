@@ -21,13 +21,13 @@ describe("structured counsel interrupts", () => {
     });
 
     expect(interrupt).toMatchObject({
-      allowReportNow: false,
+      allowReportNow: true,
       interruptId: "interrupt-1",
       kind: "scope_clarification",
       protocolInterruptId: "interrupt-1",
       question: "本次建议覆盖哪个市场？",
       recommendedOptionId: "cn",
-      resumeValues: ["cn", "global"],
+      resumeValues: ["cn", "global", "report_now"],
       title: "确认议题范围",
     });
     expect(interrupt?.options).toEqual([
@@ -39,7 +39,9 @@ describe("structured counsel interrupts", () => {
       },
       { id: "global", title: "全球市场" },
     ]);
-    expect(buildStructuredInterruptResume(interrupt!, "cn")).toBe("cn");
+    expect(buildStructuredInterruptResume(interrupt!, "cn")).toEqual({
+      "interrupt-1": "cn",
+    });
   });
 
   it("maps a value tradeoff without inventing a recommendation", () => {
@@ -54,7 +56,7 @@ describe("structured counsel interrupts", () => {
         ],
       }),
     ).toEqual({
-      allowReportNow: false,
+      allowReportNow: true,
       interruptId: "counsel-interrupt-value_tradeoff-0",
       kind: "value_tradeoff",
       options: [
@@ -63,7 +65,7 @@ describe("structured counsel interrupts", () => {
       ],
       question: "更重视速度还是确定性？",
       rationale: "两者会改变证据门槛。",
-      resumeValues: ["speed", "certainty"],
+      resumeValues: ["speed", "certainty", "report_now"],
       title: "确认价值取舍",
     });
   });

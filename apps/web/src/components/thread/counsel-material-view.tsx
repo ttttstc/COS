@@ -1,4 +1,9 @@
 import {
+  parseCounselArtifact,
+  parseCounselArtifactVersions,
+  type CounselArtifactView,
+} from "@/lib/counsel-artifact";
+import {
   CounselPanel,
   EvidencePanel,
   HistoryPanel,
@@ -33,7 +38,10 @@ function strings(record: CounselRecord | undefined, ...keys: string[]) {
   return [];
 }
 
-function getCounselMaterialCounts(state: CounselState) {
+function getCounselMaterialCounts(
+  state: CounselState,
+  artifact?: CounselArtifactView,
+) {
   const researchFields = [
     strings(state.research_plan, "unknowns", "key_unknowns"),
     strings(
@@ -52,32 +60,65 @@ function getCounselMaterialCounts(state: CounselState) {
     "text",
   );
   return {
-    counsel:
-      state.main_contradiction ||
-      recommendationText ||
-      state.confidence !== undefined ||
-      state.reconsider_when?.length ||
-      state.artifact ||
-      state.error
+    counsel: recommendationText || artifact || state.error ? 1 : 0,
+    evidence: artifact?.evidence.length ?? state.evidence?.length ?? 0,
+    history:
+      artifact?.history.length ??
+      (state.context_snapshot ? 1 : 0) +
+        (state.historical_patterns?.length ?? 0),
+    research:
+      artifact?.process || researchFields.some((items) => items.length > 0)
         ? 1
         : 0,
-    evidence: state.evidence?.length ?? 0,
-    history:
-      (state.context_snapshot ? 1 : 0) +
-      (state.historical_patterns?.length ?? 0),
-    research: researchFields.some((items) => items.length > 0) ? 1 : 0,
   };
 }
 
-export function createCounselMaterialView(value: unknown) {
+export function createCounselMaterialView(
+  value: unknown,
+  selectedVersion?: number,
+  onVersionChange?: (version?: number) => void,
+) {
   const state = parseCounselState(value);
+  const currentResult = state.artifact
+    ? parseCounselArtifact(state.artifact)
+    : undefined;
+  const versions = parseCounselArtifactVersions(state.artifact_versions);
+  const current = currentResult?.artifact;
+  const selectableVersions =
+    current &&
+    !versions.some(
+      (item) =>
+        item.version === current.version && item.status === current.status,
+    )
+      ? [...versions, current]
+      : versions;
+  const artifact = selectedVersion
+    ? selectableVersions.find((item) => item.version === selectedVersion)
+    : current;
   return {
-    counts: getCounselMaterialCounts(state),
+    counts: getCounselMaterialCounts(state, artifact),
     panels: {
-      counsel: <CounselPanel value={value} />,
-      evidence: <EvidencePanel records={state.evidence ?? []} />,
-      history: <HistoryPanel value={value} />,
-      research: <ResearchPanel record={state.research_plan} />,
+      counsel: (
+        <CounselPanel
+          fallbackState={state}
+          artifact={artifact}
+          artifactError={currentResult?.error}
+          versions={selectableVersions}
+          onVersionChange={onVersionChange}
+        />
+      ),
+      evidence: (
+        <EvidencePanel records={artifact?.evidence ?? state.evidence ?? []} />
+      ),
+      history: (
+        <HistoryPanel
+          value={value}
+          records={artifact?.history}
+        />
+      ),
+      research: (
+        <ResearchPanel record={artifact?.process ?? state.research_plan} />
+      ),
     },
   };
 }

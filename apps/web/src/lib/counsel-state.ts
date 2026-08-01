@@ -28,6 +28,7 @@ export interface CounselState {
   context_snapshot?: CounselRecord;
   historical_patterns?: CounselRecord[];
   artifact?: CounselRecord;
+  artifact_versions?: CounselRecord[];
   error?: string;
 }
 
@@ -181,6 +182,7 @@ export function parseCounselState(value: unknown): CounselState {
   const evidence = readRecordArray(value.evidence);
   const historicalPatterns = readRecordArray(value.historical_patterns);
   const error = readString(value.error);
+  const artifactVersions = readRecordArray(value.artifact_versions);
 
   return {
     messages,
@@ -202,6 +204,7 @@ export function parseCounselState(value: unknown): CounselState {
       : {}),
     ...(historicalPatterns ? { historical_patterns: historicalPatterns } : {}),
     ...(isRecord(value.artifact) ? { artifact: value.artifact } : {}),
+    ...(artifactVersions ? { artifact_versions: artifactVersions } : {}),
     ...(error ? { error } : {}),
   };
 }

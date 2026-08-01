@@ -1,5 +1,6 @@
 """Single LYL counsel graph with mode routing and safe MVP fallbacks."""
 
+import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -8,10 +9,19 @@ from typing import Literal, cast, get_args
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langgraph.checkpoint.base import BaseCheckpointSaver
+from langgraph.errors import GraphBubbleUp
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
+from langgraph.types import interrupt
 
+from lyl_agent.artifacts import (
+    DEFAULT_RECONSIDER_WHEN,
+    artifact_summary,
+    build_draft_artifact,
+    finalize_artifact,
+)
 from lyl_agent.models import create_chat_model
 from lyl_agent.memory import MemoryRepository
 from lyl_agent.settings import load_memory_db_path, load_settings
@@ -26,8 +36,11 @@ STAGE_TITLES = {
     "mode_router": "判断模式",
     "retrieve_context": "恢复上下文",
     "problem_reframe": "重述问题",
+    "request_decision": "等待裁决",
+    "prepare_artifact": "准备建议卡",
     "synthesize_counsel": "形成建议",
 }
+MAX_ACTIVE_INTERRUPTS = 2
 CounselNode = Callable[..., Awaitable[CounselState]]
 
 
@@ -126,6 +139,8 @@ def _degraded_result(state: CounselState, error: Exception) -> CounselState:
         "执行异常，已返回降级结果",
         messages=[AIMessage(content="暂时无法完成分析，请稍后重试或补充更多上下文。")],
         recommendation={"kind": "degraded"},
+        artifact=None,
+        artifact_versions=state.get("artifact_versions", []),
         error="graph_unavailable",
     )
 
@@ -139,6 +154,8 @@ async def _run_node(
 
     try:
         return await node(state, *args)
+    except GraphBubbleUp:
+        raise
     except Exception as error:
         return _degraded_result(state, error)
 
@@ -165,6 +182,11 @@ async def mode_router(
     scope = context.get("scope")
     if isinstance(scope, str) and scope in COUNSEL_SCOPES:
         updates["scope"] = scope
+    value_tradeoffs = context.get("value_tradeoffs")
+    if isinstance(value_tradeoffs, list) and all(
+        isinstance(item, str) for item in value_tradeoffs
+    ):
+        updates["value_tradeoffs"] = value_tradeoffs
     return _append_stage(state, "mode_router", f"已选择 {mode} 模式", **updates)
 
 
@@ -181,14 +203,17 @@ async def retrieve_context(
         and all(isinstance(item, str) for item in selected_memory_ids)
     ):
         selected_memory_ids = None
-    active_repository = repository or _memory_repository(
-        str(load_memory_db_path().resolve())
-    )
-    snapshot = active_repository.build_context_snapshot(
-        user_id,
-        query=state.get("raw_request"),
-        selected_memory_ids=selected_memory_ids,
-    )
+    def load_snapshot() -> object:
+        active_repository = repository or _memory_repository(
+            str(load_memory_db_path().resolve())
+        )
+        return active_repository.build_context_snapshot(
+            user_id,
+            query=state.get("raw_request"),
+            selected_memory_ids=selected_memory_ids,
+        )
+
+    snapshot = await asyncio.to_thread(load_snapshot)
     snapshot_data = snapshot.model_dump(mode="json")
     memory_ids = [
         item["id"]
@@ -219,6 +244,22 @@ async def problem_reframe(state: CounselState) -> CounselState:
     mode = state.get("mode", "discuss")
     clarification_needed = _is_clarification_needed(question)
     research_needed = _needs_research(mode, question)
+    research_plan = (
+        {
+            "title": "关键未知调研计划",
+            "status": "draft",
+            "key_unknowns": ["哪些外部事实会实质改变当前判断"],
+            "proposed_angles": ["核对一手来源与相互独立的证据"],
+            "stop_conditions": ["关键未知已得到交叉验证或证据不再改变判断"],
+        }
+        if research_needed
+        else None
+    )
+    contradiction = (
+        "议题范围尚不足以支持可靠判断。"
+        if clarification_needed
+        else "需要在行动速度与判断可靠性之间取得平衡。"
+    )
     return _append_stage(
         state,
         "problem_reframe",
@@ -226,6 +267,106 @@ async def problem_reframe(state: CounselState) -> CounselState:
         normalized_question=question,
         needs_clarification=clarification_needed,
         need_research=research_needed,
+        main_contradiction=contradiction,
+        confidence=60 if clarification_needed or research_needed else 70,
+        reconsider_when=DEFAULT_RECONSIDER_WHEN,
+        research_plan=research_plan,
+    )
+
+
+def _decision_interrupt(state: CounselState) -> dict[str, object] | None:
+    if state.get("needs_clarification"):
+        return {
+            "type": "scope_clarification",
+            "question": "本次建议应先聚焦哪个范围？",
+            "options": [
+                {
+                    "id": "focused",
+                    "label": "聚焦当前一步",
+                    "description": "先给出可立即执行的最小建议。",
+                },
+                {
+                    "id": "overall",
+                    "label": "覆盖整体方向",
+                    "description": "先梳理更完整的目标与约束。",
+                },
+            ],
+            "recommended": "focused",
+        }
+    if state.get("mode") == "decide" and state.get("value_tradeoffs"):
+        return {
+            "type": "value_tradeoff",
+            "question": "本次决定更优先速度还是确定性？",
+            "why_needed": "这个取舍会直接改变证据门槛和建议节奏。",
+            "options": [
+                {"id": "speed", "label": "速度优先", "cost": "接受更高不确定性"},
+                {"id": "certainty", "label": "确定性优先", "cost": "延后行动等待更多证据"},
+            ],
+            "recommended": "certainty",
+        }
+    if state.get("need_research"):
+        plan = state.get("research_plan") or {}
+        return {
+            "type": "research_approval",
+            "key_unknowns": plan.get("key_unknowns", []),
+            "proposed_angles": plan.get("proposed_angles", []),
+            "stop_conditions": plan.get("stop_conditions", []),
+            # Research execution is owned by the later research Skill. Until it
+            # exists, only expose the honest "report with current information" path.
+            "actions": ["report_now"],
+        }
+    return None
+
+
+def _allowed_resume_values(payload: dict[str, object]) -> set[str]:
+    if payload.get("type") == "research_approval":
+        actions = payload.get("actions")
+        return {item for item in actions if isinstance(item, str)} if isinstance(actions, list) else set()
+    options = payload.get("options")
+    allowed = {
+        item["id"]
+        for item in options
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    } if isinstance(options, list) else set()
+    allowed.add("report_now")
+    return allowed
+
+
+async def request_decision(state: CounselState) -> CounselState:
+    payload = _decision_interrupt(state)
+    if not payload or state.get("interrupt_count", 0) >= MAX_ACTIVE_INTERRUPTS:
+        return _append_stage(state, "request_decision", "当前无需用户裁决")
+
+    selection = interrupt(payload)
+    if not isinstance(selection, str) or selection not in _allowed_resume_values(payload):
+        raise ValueError("Invalid or expired interrupt selection")
+
+    decisions = [
+        *state.get("interrupt_decisions", []),
+        {"type": payload["type"], "selection": selection},
+    ]
+    updates: dict[str, object] = {
+        "interrupt_count": state.get("interrupt_count", 0) + 1,
+        "interrupt_decisions": decisions,
+        "needs_clarification": False,
+    }
+    if selection == "report_now":
+        updates["need_research"] = False
+    return _append_stage(
+        state,
+        "request_decision",
+        "已记录用户裁决并恢复原议题",
+        **updates,
+    )
+
+
+async def prepare_artifact(state: CounselState) -> CounselState:
+    artifact = build_draft_artifact(state)
+    return _append_stage(
+        state,
+        "prepare_artifact",
+        "已创建可流式更新的建议草稿",
+        artifact=artifact.model_dump(mode="json"),
     )
 
 
@@ -233,45 +374,40 @@ async def synthesize_counsel(
     state: CounselState,
     model: BaseChatModel | None = None,
 ) -> CounselState:
-    if state.get("needs_clarification"):
-        return _append_stage(
-            state,
-            "synthesize_counsel",
-            "等待用户补充关键信息",
-            messages=[
-                AIMessage(content="为了给出可靠建议，请补充目标、约束和可选方案。")
-            ],
-            recommendation={"kind": "clarification"},
-        )
-
-    if state.get("need_research"):
-        return _append_stage(
-            state,
-            "synthesize_counsel",
-            "已记录后续调研方向",
-            messages=[
-                AIMessage(
-                    content="已识别需要调研的关键未知；当前基础 Graph 已记录方向，待调研能力接入后执行。"
-                )
-            ],
-            recommendation={"kind": "research_deferred"},
-        )
-
-    active_model = model or create_chat_model(load_settings())
+    active_model = model or await asyncio.to_thread(
+        lambda: create_chat_model(load_settings())
+    )
     snapshot = state.get("context_snapshot", {})
+    decisions = state.get("interrupt_decisions", [])
     context_message = SystemMessage(
         content=(
             "以下是可追溯的用户上下文。只在相关时使用；冲突项必须同时呈现，不得臆造。\n"
             + json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
+            + "\n用户对本轮关键取舍的裁决："
+            + json.dumps(decisions, ensure_ascii=False, separators=(",", ":"))
+            + "\n请给出简洁、明确、可直接展示的参谋建议。当前版本没有执行外部调研，不得声称已完成调研。"
         )
     )
     response = await active_model.ainvoke([context_message, *state["messages"]])
+    response_text = _message_text(response.content).strip()
+    final, versions = finalize_artifact(state, response_text)
+    summary = artifact_summary(final)
+    card = final.tabs.counsel
     return _append_stage(
         state,
         "synthesize_counsel",
         "已形成基础建议",
         messages=[response],
-        recommendation={"kind": "response", "mode": state.get("mode", "discuss")},
+        recommendation={
+            "kind": "artifact",
+            "mode": state.get("mode", "discuss"),
+            "summary": summary,
+        },
+        main_contradiction=card.main_contradiction,
+        confidence=card.confidence,
+        reconsider_when=card.reconsider_when,
+        artifact=final.model_dump(mode="json"),
+        artifact_versions=versions,
     )
 
 
@@ -284,6 +420,7 @@ def _route_after_node(state: CounselState) -> Literal["continue", "end"]:
 def build_graph(
     model: BaseChatModel | None = None,
     memory_repository: MemoryRepository | None = None,
+    checkpointer: BaseCheckpointSaver | None = None,
 ) -> CompiledStateGraph:
     """Build the single counsel graph, optionally injecting a model for tests."""
 
@@ -305,6 +442,12 @@ def build_graph(
     async def run_problem_reframe(state: CounselState) -> CounselState:
         return await _run_node(state, problem_reframe)
 
+    async def run_request_decision(state: CounselState) -> CounselState:
+        return await _run_node(state, request_decision)
+
+    async def run_prepare_artifact(state: CounselState) -> CounselState:
+        return await _run_node(state, prepare_artifact)
+
     async def run_synthesize_counsel(state: CounselState) -> CounselState:
         return await _run_node(state, synthesize_counsel, model)
 
@@ -313,6 +456,8 @@ def build_graph(
     builder.add_node("mode_router", run_mode_router)
     builder.add_node("retrieve_context", run_retrieve_context)
     builder.add_node("problem_reframe", run_problem_reframe)
+    builder.add_node("request_decision", run_request_decision)
+    builder.add_node("prepare_artifact", run_prepare_artifact)
     builder.add_node("synthesize_counsel", run_synthesize_counsel)
     builder.add_edge(START, "intake")
     builder.add_conditional_edges(
@@ -329,10 +474,16 @@ def build_graph(
     builder.add_conditional_edges(
         "problem_reframe",
         _route_after_node,
+        {"continue": "request_decision", "end": END},
+    )
+    builder.add_edge("request_decision", "prepare_artifact")
+    builder.add_conditional_edges(
+        "prepare_artifact",
+        _route_after_node,
         {"continue": "synthesize_counsel", "end": END},
     )
     builder.add_edge("synthesize_counsel", END)
-    return builder.compile()
+    return builder.compile(checkpointer=checkpointer)
 
 
 graph = build_graph()

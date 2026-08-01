@@ -29,7 +29,7 @@ import {
   parseStructuredDecisionInterrupt,
   type StructuredDecisionInterrupt,
 } from "@/lib/decision-interrupt";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 function CustomComponent({
   message,
@@ -99,9 +99,12 @@ export function StructuredInterruptView({
     interrupt.recommendedOptionId ?? interrupt.options[0]?.id,
   );
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [cancelAnnouncement, setCancelAnnouncement] = useState("");
 
   const resume = async (value: string) => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       await stream.submit(
@@ -117,6 +120,7 @@ export function StructuredInterruptView({
       );
       setCancelAnnouncement("");
     } catch (error) {
+      submittingRef.current = false;
       setSubmitting(false);
       console.error("Error resuming counsel interrupt", error);
     }
