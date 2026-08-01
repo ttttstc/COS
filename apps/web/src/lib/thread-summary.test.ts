@@ -26,7 +26,12 @@ afterEach(() => {
 });
 
 describe("thread summaries", () => {
-  it("reads counsel type from metadata and falls back for legacy threads", () => {
+  it("reads counsel mode from state and falls back to legacy metadata", () => {
+    expect(
+      getThreadMode(
+        makeThread({ values: { mode: "research" }, metadata: { mode: "ask" } }),
+      ),
+    ).toBe("research");
     expect(getThreadMode(makeThread({ metadata: { mode: "diagnose" } }))).toBe(
       "diagnose",
     );

@@ -97,7 +97,7 @@ Open `http://localhost:3000`. Create a conversation and send a message. The
 stub Agent streams `本地 LangGraph 基线已连接。`
 
 首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入自由讨论。
-所选模式随每次消息作为 LangGraph Run Context 发送，并记录到新 Thread metadata。
+所选模式随每次消息作为 LangGraph Run Context 发送，并持久化在 Thread state（旧 Thread metadata 仍作为兼容回退）。
 
 ## Production Web configuration
 

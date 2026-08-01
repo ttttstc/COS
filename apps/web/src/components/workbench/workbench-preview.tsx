@@ -20,6 +20,7 @@ import {
   IssueTopbar,
   ResearchPlanCard,
   StageProgress,
+  type StageProgressItem,
   ToolActivity,
 } from "@/components/clauseos/business";
 import { LYL_ICON_MAP } from "@/components/icons/lyl-icons";
@@ -129,7 +130,7 @@ const STAGES = {
     { id: "research", label: "核验关键证据", state: "complete" as const },
     { id: "judgment", label: "形成正式建议", state: "complete" as const },
   ],
-};
+} satisfies Record<"running" | "waiting" | "ready", StageProgressItem[]>;
 
 const RESEARCH_PROGRESS = {
   running: [
@@ -192,7 +193,7 @@ const RESEARCH_PROGRESS = {
       state: "complete" as const,
     },
   ],
-};
+} satisfies Record<"running" | "waiting" | "ready", StageProgressItem[]>;
 
 export function WorkbenchPreview({ state }: { state: WorkbenchPreviewState }) {
   const scenario = SCENARIO[state];

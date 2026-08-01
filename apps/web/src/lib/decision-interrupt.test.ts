@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildStructuredInterruptResume,
   parseStructuredDecisionInterrupt,
-  parseStructuredDecisionInterrupts,
 } from "./decision-interrupt";
 
 describe("structured counsel interrupts", () => {
@@ -97,25 +96,27 @@ describe("structured counsel interrupts", () => {
     );
   });
 
-  it("returns every recognized envelope and lets unknown schemas fall back", () => {
-    const interrupts = parseStructuredDecisionInterrupts([
-      {
-        id: "scope",
-        value: {
-          type: "scope_clarification",
-          question: "范围？",
-          options: [
-            { id: "a", label: "A" },
-            { id: "b", label: "B" },
-          ],
+  it("accepts one envelope and rejects arrays or unknown schemas", () => {
+    expect(
+      parseStructuredDecisionInterrupt([
+        {
+          id: "scope",
+          value: {
+            type: "scope_clarification",
+            question: "范围？",
+            options: [
+              { id: "a", label: "A" },
+              { id: "b", label: "B" },
+            ],
+          },
         },
-      },
-      { value: { action_requests: [], review_configs: [] } },
-      { value: { type: "future_interrupt", question: "未知" } },
-    ]);
-
-    expect(interrupts).toHaveLength(1);
-    expect(interrupts[0].protocolInterruptId).toBe("scope");
+      ]),
+    ).toBeUndefined();
+    expect(
+      parseStructuredDecisionInterrupt({
+        value: { action_requests: [], review_configs: [] },
+      }),
+    ).toBeUndefined();
     expect(
       parseStructuredDecisionInterrupt({
         value: {

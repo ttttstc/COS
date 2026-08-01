@@ -154,6 +154,11 @@ export function SplitButton({
         className="cos-split-button__menu"
         onToggle={() => {
           if (disabled && menuRef.current) menuRef.current.open = false;
+          if (menuRef.current?.open) {
+            menuRef.current
+              .querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')
+              ?.focus();
+          }
         }}
       >
         <summary

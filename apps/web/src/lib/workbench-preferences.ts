@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MaterialTabId } from "./counsel-state";
 
@@ -148,9 +148,36 @@ export function saveWorkbenchPreferences(
       WORKBENCH_PREFERENCES_STORAGE_KEY,
       JSON.stringify(preferences),
     );
-  } catch {
+  } catch (error) {
     // Storage can be unavailable in private browsing or a locked-down embed.
+    console.warn("Unable to save workbench preferences", error);
   }
+}
+
+export interface DebouncedPreferenceSaver {
+  cancel(): void;
+  schedule(preferences: WorkbenchPreferences): void;
+}
+
+export function createDebouncedPreferenceSaver(
+  storage: StorageWriter,
+  delay = 150,
+): DebouncedPreferenceSaver {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  return {
+    cancel() {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = undefined;
+    },
+    schedule(preferences) {
+      if (timer !== undefined) clearTimeout(timer);
+      timer = setTimeout(() => {
+        saveWorkbenchPreferences(storage, preferences);
+        timer = undefined;
+      }, delay);
+    },
+  };
 }
 
 export function useWorkbenchPreferences(): WorkbenchPreferencesController {
@@ -159,16 +186,26 @@ export function useWorkbenchPreferences(): WorkbenchPreferencesController {
   );
   const [hydrated, setHydrated] = useState(false);
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const preferencesLoaded = useRef(false);
+  const widthSaver = useRef<DebouncedPreferenceSaver | undefined>(undefined);
+
+  const scheduleWidthSave = useCallback((next: WorkbenchPreferences) => {
+    if (typeof window === "undefined") return;
+    widthSaver.current ??= createDebouncedPreferenceSaver(window.localStorage);
+    widthSaver.current.schedule(next);
+  }, []);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setViewportWidth(window.innerWidth);
-      setPreferences(
-        loadWorkbenchPreferences(window.localStorage, window.innerWidth),
-      );
-      setHydrated(true);
-    });
+    if (preferencesLoaded.current) return;
+    preferencesLoaded.current = true;
+    setViewportWidth(window.innerWidth);
+    setPreferences(
+      loadWorkbenchPreferences(window.localStorage, window.innerWidth),
+    );
+    setHydrated(true);
+  }, []);
 
+  useEffect(() => {
     const handleResize = () => {
       setViewportWidth(window.innerWidth);
       setPreferences((previous) => {
@@ -181,17 +218,17 @@ export function useWorkbenchPreferences(): WorkbenchPreferencesController {
           ...previous,
           materialPanel: { ...previous.materialPanel, width },
         };
-        saveWorkbenchPreferences(window.localStorage, next);
+        scheduleWidthSave(next);
         return next;
       });
     };
     window.addEventListener("resize", handleResize);
 
     return () => {
-      window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", handleResize);
+      widthSaver.current?.cancel();
     };
-  }, []);
+  }, [scheduleWidthSave]);
 
   const updatePreferences = useCallback(
     (
@@ -230,18 +267,22 @@ export function useWorkbenchPreferences(): WorkbenchPreferencesController {
 
   const setMaterialPanelWidth = useCallback(
     (width: number) => {
-      updatePreferences((previous) => ({
-        ...previous,
-        materialPanel: {
-          ...previous.materialPanel,
-          width: clampMaterialPanelWidth(
-            width,
-            typeof window === "undefined" ? 1440 : window.innerWidth,
-          ),
-        },
-      }));
+      setPreferences((previous) => {
+        const next = {
+          ...previous,
+          materialPanel: {
+            ...previous.materialPanel,
+            width: clampMaterialPanelWidth(
+              width,
+              typeof window === "undefined" ? 1440 : window.innerWidth,
+            ),
+          },
+        };
+        scheduleWidthSave(next);
+        return next;
+      });
     },
-    [updatePreferences],
+    [scheduleWidthSave],
   );
 
   const toggleMaterialPanel = useCallback(() => {

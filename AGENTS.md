@@ -19,6 +19,10 @@ When requirements conflict, follow this order:
 
 Do not silently resolve a real conflict between the current Issue, this file, PRD, SPEC, or design specifications. Stop and report the conflict with a recommended resolution.
 
+Validation commands are intentionally distinct: `pnpm test:e2e` starts the
+Playwright web server on port 3001, while `pnpm smoke` exercises the running
+LangGraph Agent endpoint and does not start the web server.
+
 ## 2. Product boundaries
 
 COS is the repository for the LYL personal strategic counsel agent.

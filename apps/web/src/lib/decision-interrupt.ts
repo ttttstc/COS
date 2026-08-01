@@ -325,22 +325,14 @@ function toPresentation(
   };
 }
 
-export function parseStructuredDecisionInterrupts(
-  input: unknown,
-): StructuredDecisionInterrupt[] {
-  const candidates = Array.isArray(input) ? input : [input];
-  return candidates.flatMap((candidate, index) => {
-    const envelope = readEnvelope(candidate);
-    if (!envelope) return [];
-    const value = parseCounselInterruptValue(envelope.value);
-    return value ? [toPresentation(value, envelope, index)] : [];
-  });
-}
-
 export function parseStructuredDecisionInterrupt(
   input: unknown,
 ): StructuredDecisionInterrupt | undefined {
-  return parseStructuredDecisionInterrupts(input)[0];
+  if (Array.isArray(input)) return undefined;
+  const envelope = readEnvelope(input);
+  if (!envelope) return undefined;
+  const value = parseCounselInterruptValue(envelope.value);
+  return value ? toPresentation(value, envelope, 0) : undefined;
 }
 
 export function buildStructuredInterruptResume(

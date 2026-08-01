@@ -144,7 +144,7 @@ export const GlassSurface = forwardRef<HTMLDivElement, GlassSurfaceProps>(
       active = false,
       children,
       className,
-      decorated = true,
+      decorated = false,
       disabled = false,
       interactive = false,
       level = "regular",
@@ -167,7 +167,6 @@ export const GlassSurface = forwardRef<HTMLDivElement, GlassSurfaceProps>(
         data-interactive={interactive || undefined}
         data-level={level}
         data-optics={optics}
-        aria-disabled={disabled || undefined}
         {...props}
       >
         {decorated && (
@@ -199,6 +198,7 @@ export const GlassClear = forwardRef<HTMLDivElement, FixedGlassSurfaceProps>(
       ref={ref}
       level="clear"
       {...props}
+      decorated={props.decorated ?? true}
     />
   ),
 );
@@ -210,6 +210,7 @@ export const GlassThin = forwardRef<HTMLDivElement, FixedGlassSurfaceProps>(
       ref={ref}
       level="thin"
       {...props}
+      decorated={props.decorated ?? true}
     />
   ),
 );
@@ -221,6 +222,7 @@ export const GlassRegular = forwardRef<HTMLDivElement, FixedGlassSurfaceProps>(
       ref={ref}
       level="regular"
       {...props}
+      decorated={props.decorated ?? true}
     />
   ),
 );
@@ -232,6 +234,7 @@ export const GlassThick = forwardRef<HTMLDivElement, FixedGlassSurfaceProps>(
       ref={ref}
       level="thick"
       {...props}
+      decorated={props.decorated ?? true}
     />
   ),
 );

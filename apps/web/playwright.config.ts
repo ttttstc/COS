@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseURL = process.env.PLAYWRIGHT_BASE_URL;
-const baseURL = externalBaseURL ?? "http://127.0.0.1:3000";
+const baseURL = externalBaseURL ?? "http://127.0.0.1:3001";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -29,7 +29,7 @@ export default defineConfig({
   webServer: externalBaseURL
     ? undefined
     : {
-        command: "pnpm dev --hostname 127.0.0.1 --port 3000",
+        command: "pnpm dev --hostname 127.0.0.1 --port 3001",
         url: `${baseURL}/control-gallery`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

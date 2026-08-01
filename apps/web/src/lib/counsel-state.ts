@@ -13,6 +13,7 @@ export interface CounselStage {
   summary?: string;
 }
 
+// 当前前端仅消费 SPEC §13 子集；其余字段待后续 issue 接入（memory_proposals / decision_record_id / feedback / needs_clarification）
 export interface CounselState {
   messages: Message[];
   ui?: UIMessage[];

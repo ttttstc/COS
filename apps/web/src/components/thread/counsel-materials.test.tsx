@@ -1,10 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import {
-  CounselMaterials,
-  createCounselMaterialView,
-} from "./counsel-materials";
+import { CounselMaterials } from "./counsel-materials";
+import { createCounselMaterialView } from "./counsel-material-view";
 
 describe("CounselMaterials research panel", () => {
   it("renders the real research plan fields as a vertical progress list", () => {

@@ -34,6 +34,23 @@ test.describe("ClauseOS Control Gallery", () => {
     await expect(dialog).toBeHidden();
   });
 
+  test("keeps split-button menu in the keyboard tab order", async ({
+    page,
+  }) => {
+    const primary = page.getByRole("button", { name: "形成建议", exact: true });
+    const menuTrigger = page.locator(
+      '.cos-split-button__menu > summary[aria-label="形成建议的更多操作"]',
+    );
+
+    await primary.focus();
+    await page.keyboard.press("Tab");
+    await expect(menuTrigger).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("menuitem", { name: "保存草稿" }),
+    ).toBeFocused();
+  });
+
   test("exposes the remaining P0 semantic primitives", async ({ page }) => {
     const primitives = page.locator("#primitives");
     await expect(

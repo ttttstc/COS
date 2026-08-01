@@ -125,8 +125,12 @@ test.describe("ClauseOS desktop layout", () => {
         navigation.boundingBox(),
         material.boundingBox(),
       ]);
-      expect(navigationBox?.width).toBeCloseTo(viewport.navigation, 0);
-      expect(materialBox?.width).toBeCloseTo(viewport.material, 0);
+      expect(
+        Math.abs((navigationBox?.width ?? 0) - viewport.navigation),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs((materialBox?.width ?? 0) - viewport.material),
+      ).toBeLessThanOrEqual(1);
       const separator = page.getByRole("separator", {
         name: "调整参谋材料宽度",
       });

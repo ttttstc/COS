@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   WORKBENCH_PREFERENCES_STORAGE_KEY,
   clampMaterialPanelWidth,
+  createDebouncedPreferenceSaver,
   createDefaultWorkbenchPreferences,
   getMaterialPanelMaxWidth,
   loadWorkbenchPreferences,
@@ -110,5 +111,43 @@ describe("workbench preferences", () => {
     expect(
       loadWorkbenchPreferences({ getItem: () => "not-json" }, 1024),
     ).toEqual(createDefaultWorkbenchPreferences(1024));
+  });
+
+  it("coalesces rapid resize writes into one trailing save", () => {
+    vi.useFakeTimers();
+    const setItem = vi.fn();
+    const saver = createDebouncedPreferenceSaver({ setItem }, 150);
+    const preferences = createDefaultWorkbenchPreferences(1440);
+
+    for (let index = 0; index < 10; index += 1) {
+      saver.schedule({
+        ...preferences,
+        materialPanel: { ...preferences.materialPanel, width: 392 + index },
+      });
+      vi.advanceTimersByTime(20);
+    }
+
+    expect(setItem).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(150);
+    expect(setItem).toHaveBeenCalledTimes(1);
+    saver.cancel();
+    vi.useRealTimers();
+  });
+
+  it("warns when preference storage cannot be written", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    saveWorkbenchPreferences(
+      {
+        setItem: () => {
+          throw new Error("blocked");
+        },
+      },
+      createDefaultWorkbenchPreferences(),
+    );
+    expect(warn).toHaveBeenCalledWith(
+      "Unable to save workbench preferences",
+      expect.any(Error),
+    );
+    warn.mockRestore();
   });
 });

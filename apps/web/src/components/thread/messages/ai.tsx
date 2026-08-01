@@ -115,6 +115,7 @@ export function StructuredInterruptView({
           streamResumable: true,
         },
       );
+      setCancelAnnouncement("");
     } catch (error) {
       setSubmitting(false);
       console.error("Error resuming counsel interrupt", error);

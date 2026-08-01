@@ -7,6 +7,7 @@ describe("GlassSurface", () => {
   it("exposes an optical profile and renders independent physical layers", () => {
     render(
       <GlassSurface
+        decorated
         optics="palette"
         prismCorners={["top-right", "bottom-right"]}
         sweep="dual"

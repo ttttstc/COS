@@ -408,6 +408,16 @@ export function ClauseOSWorkbench({
     );
   };
 
+  const resizeByPointerDelta = (delta: number) => {
+    resizeMaterial(
+      (resizeStart.current?.width ?? getCurrentMaterialWidth()) + delta,
+    );
+  };
+
+  const resizeByStep = (direction: -1 | 1) => {
+    resizeMaterial(getCurrentMaterialWidth() - direction * 8);
+  };
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!onMaterialWidthChange || materialMaxWidth <= materialMinWidth) return;
     resizeStart.current = {
@@ -425,9 +435,7 @@ export function ClauseOSWorkbench({
     ) {
       return;
     }
-    resizeMaterial(
-      resizeStart.current.width + resizeStart.current.pointerX - event.clientX,
-    );
+    resizeByPointerDelta(resizeStart.current.pointerX - event.clientX);
   };
 
   const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -464,9 +472,7 @@ export function ClauseOSWorkbench({
                 valueMin={materialMinWidth}
                 valueMax={materialMaxWidth}
                 valueNow={materialWidth}
-                onStep={(direction) =>
-                  resizeMaterial(getCurrentMaterialWidth() - direction * 8)
-                }
+                onStep={resizeByStep}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerEnd}

@@ -157,7 +157,13 @@ const FILTER_CATEGORIES = [
 ] as const;
 
 const GALLERY_TEAM_MEMBERS = [
-  { id: "liu", alt: "刘亚楼", initials: "LYL", presence: "online" },
+  {
+    id: "liu",
+    alt: "刘亚楼",
+    initials: "LYL",
+    presence: "online",
+    src: "/assets/avatars/strategist.png",
+  },
   { id: "wen", alt: "温曦", initials: "WX", presence: "busy" },
   { id: "tomas", alt: "Tomas", initials: "TM", presence: "offline" },
   { id: "qu", alt: "曲哲", initials: "QZ", presence: "away" },

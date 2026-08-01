@@ -48,7 +48,7 @@ import {
   readCounselMode,
   type ActiveCounselMode,
 } from "@/lib/counsel-mode";
-import { toStageProgress } from "@/lib/counsel-state";
+import { parseCounselState, toStageProgress } from "@/lib/counsel-state";
 import { getThreadMode, getThreadUpdatedLabel } from "@/lib/thread-summary";
 import { useWorkbenchPreferences } from "@/lib/workbench-preferences";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -62,7 +62,7 @@ import {
   useArtifactOpen,
 } from "./artifact";
 import { ContentBlocksPreview } from "./ContentBlocksPreview";
-import { createCounselMaterialView } from "./counsel-materials";
+import { createCounselMaterialView } from "./counsel-material-view";
 import { CounselWelcome } from "./counsel-welcome";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
@@ -101,9 +101,16 @@ function getThreadTitle(thread: LangGraphThread): string {
   return "未命名议题";
 }
 
-function toIssueStatus(status: ThreadStatus, mode: string): IssueStatus {
+const RESEARCH_STAGE_IDS = new Set(["retrieve_context"]);
+
+function toIssueStatus(
+  status: ThreadStatus,
+  stageId?: string,
+): IssueStatus {
   if (status === "busy")
-    return mode === "research" ? "researching" : "analyzing";
+    return stageId && RESEARCH_STAGE_IDS.has(stageId)
+      ? "researching"
+      : "analyzing";
   if (status === "interrupted") return "waiting_user";
   if (status === "error") return "failed";
   return "counsel_ready";
@@ -111,10 +118,12 @@ function toIssueStatus(status: ThreadStatus, mode: string): IssueStatus {
 
 function toWorkbenchIssue(thread: LangGraphThread): WorkbenchIssue {
   const mode = getThreadMode(thread);
+  const state = parseCounselState(thread.values);
+  const stageId = state.stages?.at(-1)?.id ?? state.current_stage;
   return {
     id: thread.thread_id,
     mode,
-    status: toIssueStatus(thread.status, mode),
+    status: toIssueStatus(thread.status, stageId),
     title: getThreadTitle(thread),
     updatedAt: thread.updated_at,
     updatedLabel: getThreadUpdatedLabel(thread.updated_at),
@@ -138,6 +147,7 @@ export function Thread() {
   } = useWorkbenchPreferences();
 
   const [threadId, setThreadIdQuery] = useQueryState("threadId");
+  // Issue #20 UX extension: keep tool-call visibility in the URL without changing the base counsel protocol.
   const [hideToolCalls, setHideToolCalls] = useQueryState(
     "hideToolCalls",
     parseAsBoolean.withDefault(false),
@@ -258,7 +268,6 @@ export function Thread() {
     const selected = threads.find((thread) => thread.thread_id === id);
     if (selected) void setMode(getThreadMode(selected));
     if (id !== threadId) void setThreadIdQuery(id);
-    clearThreadContext();
   };
 
   const handleSubmit = () => {
@@ -277,7 +286,6 @@ export function Thread() {
       { messages: [...toolMessages, newHumanMessage] },
       {
         context: buildCounselRunContext(mode, artifactContext),
-        metadata: { mode },
         streamMode: ["values"],
         streamSubgraphs: true,
         streamResumable: true,
@@ -302,7 +310,6 @@ export function Thread() {
     setFirstTokenReceived(false);
     stream.submit(undefined, {
       context: buildCounselRunContext(mode, artifactContext),
-      metadata: { mode },
       checkpoint: parentCheckpoint,
       streamMode: ["values"],
       streamSubgraphs: true,
@@ -322,12 +329,13 @@ export function Thread() {
       ? getContentString(firstHumanMessage.content).trim()
       : "") ||
     "新建议题";
+  const currentStreamState = parseCounselState(stream.values);
+  const currentStageId =
+    currentStreamState.stages?.at(-1)?.id ?? currentStreamState.current_stage;
   const currentStatus: IssueStatus = stream.error
     ? "failed"
     : isLoading
-      ? mode === "research"
-        ? "researching"
-        : "analyzing"
+      ? toIssueStatus("busy", currentStageId)
       : (selectedIssue?.status ?? "draft");
   const stages = toStageProgress(stream.values);
   const hasNoAIOrToolMessages = !messages.some(
@@ -339,23 +347,26 @@ export function Thread() {
   const counselPanel = (
     <div className="cos-material-stack">
       {artifactOpen && (
-        <ContentSurface
-          raised
+        // Artifact intentionally remains a labeled subsection of the four-tab counsel panel.
+        <section
+          aria-label="参谋产物"
           className="cos-thread-artifact"
         >
-          <header className="cos-thread-artifact__header">
-            <ArtifactTitle className="cos-thread-artifact__title" />
-            <IconButton
-              label="关闭产物"
-              size="sm"
-              variant="ghost"
-              onClick={closeArtifact}
-            >
-              <LYL_ICON_MAP.close aria-hidden="true" />
-            </IconButton>
-          </header>
-          <ArtifactContent className="cos-thread-artifact__content" />
-        </ContentSurface>
+          <ContentSurface raised>
+            <header className="cos-thread-artifact__header">
+              <ArtifactTitle className="cos-thread-artifact__title" />
+              <IconButton
+                label="关闭产物"
+                size="sm"
+                variant="ghost"
+                onClick={closeArtifact}
+              >
+                <LYL_ICON_MAP.close aria-hidden="true" />
+              </IconButton>
+            </header>
+            <ArtifactContent className="cos-thread-artifact__content" />
+          </ContentSurface>
+        </section>
       )}
       {materialView.panels.counsel}
     </div>
