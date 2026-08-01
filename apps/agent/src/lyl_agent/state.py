@@ -31,6 +31,9 @@ class CounselContext(TypedDict, total=False):
     selected_memory_ids: list[str]
     file_ids: list[str]
     value_tradeoffs: list[str]
+    options_from_user: list[str]
+    objectives: list[str]
+    constraints: list[str]
 
 
 class CounselState(TypedDict, total=False):
@@ -51,6 +54,18 @@ class CounselState(TypedDict, total=False):
     objectives: list[str]
     constraints: list[str]
     value_tradeoffs: list[str]
+    problem_reason: str
+    candidate_actions: list[dict[str, object]]
+    selected_action_id: str
+    action_title: str
+    action_description: str
+    completion_criteria: list[str]
+    pause_or_stop: list[str]
+    facts: list[str]
+    assumptions: list[str]
+    decision_question: str
+    recommended_option_id: str
+    recommendation_reason: str
     selected_memory_ids: list[str]
     context_snapshot: dict[str, object]
     historical_patterns: list[dict[str, object]]

@@ -61,8 +61,115 @@ function relation(value: unknown): EvidenceRelation {
     : "context";
 }
 
+function records(value: unknown): CounselRecord[] {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is CounselRecord =>
+          typeof item === "object" && item !== null && !Array.isArray(item),
+      )
+    : [];
+}
+
 interface ArtifactCardProps {
   artifact: CounselArtifactView;
+}
+
+function DetailList({ title, items }: { title: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <section>
+      <h3>{title}</h3>
+      <ul>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ArtifactDetails({ artifact }: ArtifactCardProps) {
+  const counsel = artifact.counsel;
+  if (artifact.artifactType === "next_action") {
+    const scope = text(counsel, "scope");
+    const criteria = strings(counsel, "completion_criteria");
+    if (!scope && !criteria.length) return null;
+    return (
+      <div className="cos-counsel-details">
+        {scope && (
+          <StatusBadge tone="info">
+            {scope === "global" ? "全局优先级" : "局部下一步"}
+          </StatusBadge>
+        )}
+        <DetailList
+          title="完成标准"
+          items={criteria}
+        />
+      </div>
+    );
+  }
+  if (artifact.artifactType !== "decision") return null;
+
+  const options = records(counsel.options);
+  const recommended = text(counsel, "recommended_option_id");
+  return (
+    <div className="cos-counsel-details">
+      {options.length > 0 && (
+        <section>
+          <h3>比较方案</h3>
+          <ol className="cos-counsel-details__options">
+            {options.map((option, index) => {
+              const id = text(option, "id") ?? `option-${index}`;
+              const title = text(option, "title") ?? id;
+              return (
+                <li
+                  className="cos-counsel-details__option"
+                  data-recommended={id === recommended ? "true" : undefined}
+                  key={id}
+                >
+                  <div className="cos-counsel-details__option-heading">
+                    <strong>{title}</strong>
+                    {id === recommended && (
+                      <StatusBadge tone="success">首选</StatusBadge>
+                    )}
+                  </div>
+                  {text(option, "summary") && <p>{text(option, "summary")}</p>}
+                  <DetailList
+                    title="收益"
+                    items={strings(option, "benefits")}
+                  />
+                  <DetailList
+                    title="代价"
+                    items={strings(option, "costs")}
+                  />
+                  <DetailList
+                    title="风险"
+                    items={strings(option, "risks")}
+                  />
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
+      <DetailList
+        title="已知事实"
+        items={strings(counsel, "facts")}
+      />
+      <DetailList
+        title="显式假设"
+        items={strings(counsel, "assumptions")}
+      />
+      <DetailList
+        title="关键未知"
+        items={strings(counsel, "unknowns")}
+      />
+      <DetailList
+        title="反方审查"
+        items={strings(counsel, "opposition_view")}
+      />
+    </div>
+  );
 }
 
 function ArtifactSummary({ artifact }: ArtifactCardProps) {
@@ -74,6 +181,7 @@ function ArtifactSummary({ artifact }: ArtifactCardProps) {
       confidence={artifact.confidence}
       changeConditions={artifact.changeConditions}
       deferItems={artifact.deferItems}
+      actions={<ArtifactDetails artifact={artifact} />}
     />
   );
 }

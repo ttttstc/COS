@@ -198,19 +198,25 @@ async def test_new_turn_resets_stage_progress_and_transient_error() -> None:
     result = await intake(
         {
             "messages": [HumanMessage(content="重新分析")],
-            "stages": [
+        "stages": [
                 {
                     "id": "synthesize_counsel",
                     "title": "形成建议",
                     "status": "completed",
                 }
-            ],
-            "error": "graph_unavailable",
-        }
+        ],
+        "error": "graph_unavailable",
+        "decision_question": "旧议题",
+        "action_title": "旧行动",
+        "options": [{"id": "old"}],
+    }
     )
 
     assert [stage["id"] for stage in result["stages"]] == ["intake"]
     assert result["error"] is None
+    assert result["decision_question"] is None
+    assert result["action_title"] is None
+    assert result["options"] == []
 
 
 @pytest.mark.asyncio
