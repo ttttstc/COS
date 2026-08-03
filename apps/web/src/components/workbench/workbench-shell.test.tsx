@@ -6,6 +6,7 @@ import {
   BrandLockup,
   ClauseOSWorkbench,
   CounselMaterialPanel,
+  IssueNavigator,
   NavItem,
   NavSection,
   NewIssueButton,
@@ -39,14 +40,35 @@ describe("workbench navigation controls", () => {
       </>,
     );
 
-    expect(container.querySelector('[data-compact="true"]')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-compact="true"]'),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "新建议题" })).toBeDisabled();
-    expect(screen.getByText("隐藏内容").parentElement).toHaveAttribute("hidden");
+    expect(screen.getByText("隐藏内容").parentElement).toHaveAttribute(
+      "hidden",
+    );
     expect(screen.getByRole("button", { name: "调研后判断" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
     expect(screen.getByRole("button", { name: "调研后判断" })).toBeDisabled();
+  });
+
+  it("keeps connection settings reachable from the navigator", async () => {
+    const user = userEvent.setup();
+    const onOpenSettings = vi.fn();
+    render(
+      <IssueNavigator
+        issues={[]}
+        onCreateIssue={() => undefined}
+        onModeSelect={() => undefined}
+        onOpenSettings={onOpenSettings}
+        onSelectIssue={() => undefined}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "打开设置" }));
+    expect(onOpenSettings).toHaveBeenCalledOnce();
   });
 });
 

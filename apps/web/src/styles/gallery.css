@@ -168,6 +168,28 @@
   z-index: 1;
 }
 
+.cos-gallery__optics-sample {
+  min-height: calc(var(--lyl-space-12) * 3);
+}
+
+.cos-gallery__optics-sample > .lyl-glass-surface__content {
+  display: grid;
+  align-content: end;
+  gap: var(--lyl-space-2);
+  min-height: inherit;
+  padding: var(--lyl-space-4);
+}
+
+.cos-gallery__optics-sample strong {
+  color: var(--lyl-text-1);
+  font: 600 var(--lyl-body) / 1.4 var(--lyl-font-ui);
+}
+
+.cos-gallery__optics-sample span {
+  color: var(--lyl-text-3);
+  font: 400 var(--lyl-caption) / 1.5 var(--lyl-font-ui);
+}
+
 .cos-gallery__guard-sample {
   min-height: calc(var(--lyl-space-12) * 3);
   overflow: hidden;

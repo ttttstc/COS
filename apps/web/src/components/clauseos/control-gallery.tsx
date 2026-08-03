@@ -498,6 +498,34 @@ export function ControlGallery() {
                     <p>下一步：整理能够改变判断的证据。</p>
                   </ScrollArea>
                 </div>
+                <div className="cos-gallery__primitive-demo">
+                  <h3>Panel optics</h3>
+                  <GlassSurface
+                    className="cos-gallery__optics-sample"
+                    decorated
+                    level="regular"
+                    optics="panel"
+                    prismCorners={["top-right", "bottom-right"]}
+                    sweep="dual"
+                  >
+                    <strong>单一银边 · 局部焦散</strong>
+                    <span>固定尺寸棱镜角光，不随面板比例拉伸。</span>
+                  </GlassSurface>
+                </div>
+                <div className="cos-gallery__primitive-demo">
+                  <h3>Palette optics</h3>
+                  <GlassSurface
+                    className="cos-gallery__optics-sample"
+                    decorated
+                    level="thick"
+                    optics="palette"
+                    prismCorners={["top-right"]}
+                    sweep="top-left"
+                  >
+                    <strong>高层级玻璃</strong>
+                    <span>更强入射白光，仅用于命令面板与模态浮层。</span>
+                  </GlassSurface>
+                </div>
               </div>
 
               <Divider label="三栏工作台概念" />

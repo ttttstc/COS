@@ -74,6 +74,16 @@
   border-radius: var(--lyl-radius-xl);
 }
 
+.cos-workbench__navigator-surface.lyl-glass-surface[data-level="regular"] {
+  background-image:
+    var(--lyl-glass-navigation-light), var(--lyl-glass-gradient-regular);
+}
+
+.cos-workbench__material-surface.lyl-glass-surface[data-level="regular"] {
+  background-image:
+    var(--lyl-glass-material-light), var(--lyl-glass-gradient-regular);
+}
+
 .cos-workbench__navigator-surface > .lyl-glass-surface__content {
   display: grid;
   min-height: 0;
@@ -86,6 +96,7 @@
 .cos-workbench__brand,
 .cos-workbench__brand-copy,
 .cos-workbench__section-heading,
+.cos-workbench__settings-trigger,
 .cos-workbench__command-trigger {
   display: flex;
   align-items: center;
@@ -184,6 +195,7 @@
 }
 
 .cos-workbench__quick-modes button,
+.cos-workbench__settings-trigger,
 .cos-workbench__command-trigger {
   position: relative;
   width: 100%;
@@ -204,6 +216,7 @@
 }
 
 .cos-workbench__quick-modes button:hover,
+.cos-workbench__settings-trigger:hover:not(:disabled),
 .cos-workbench__command-trigger:hover:not(:disabled) {
   color: var(--lyl-text-1);
   border-color: var(--lyl-glass-border-soft) transparent transparent
@@ -256,12 +269,14 @@
 }
 
 .cos-workbench__quick-modes button:focus-visible,
+.cos-workbench__settings-trigger:focus-visible,
 .cos-workbench__command-trigger:focus-visible {
   outline: 2px solid var(--lyl-border-focus);
   outline-offset: 2px;
 }
 
 .cos-workbench__quick-modes button svg,
+.cos-workbench__settings-trigger svg,
 .cos-workbench__command-trigger svg {
   flex: 0 0 auto;
 }
@@ -287,10 +302,13 @@
 }
 
 .cos-workbench__navigator-footer {
+  display: grid;
+  gap: var(--lyl-space-1);
   padding-top: var(--lyl-space-3);
   border-top: 1px solid var(--lyl-border-content);
 }
 
+.cos-workbench__settings-trigger:disabled,
 .cos-workbench__command-trigger:disabled {
   color: var(--lyl-text-disabled);
   cursor: not-allowed;
@@ -531,6 +549,7 @@
   .cos-workbench__quick-modes h2,
   .cos-workbench__quick-modes button > span,
   .cos-workbench__section-heading,
+  .cos-workbench__settings-trigger > span,
   .cos-workbench__command-trigger > span {
     position: absolute !important;
     width: 1px !important;
@@ -552,6 +571,7 @@
   }
 
   .cos-workbench__quick-modes button,
+  .cos-workbench__settings-trigger,
   .cos-workbench__command-trigger {
     width: calc(var(--lyl-space-8) + var(--lyl-space-2));
     min-height: calc(var(--lyl-space-8) + var(--lyl-space-2));
@@ -600,6 +620,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cos-workbench__quick-modes button,
+  .cos-workbench__settings-trigger,
   .cos-workbench__command-trigger,
   .cos-workbench__material .cos-tabs__panel {
     animation: none;
