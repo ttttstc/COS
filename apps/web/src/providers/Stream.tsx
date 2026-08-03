@@ -27,6 +27,7 @@ import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { type CounselMode } from "@/lib/counsel-mode";
 import { resolveApiUrl, resolveStreamConfig } from "@/lib/stream-config";
+import { checkGraphStatus } from "@/lib/graph-status";
 import type { CounselState } from "@/lib/counsel-state";
 import {
   GlassThick,
@@ -52,27 +53,6 @@ const StreamContext = createContext<StreamContextType | undefined>(undefined);
 
 async function sleep(ms = 4000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function checkGraphStatus(
-  apiUrl: string,
-  apiKey: string | null,
-  authScheme?: string,
-): Promise<boolean> {
-  try {
-    const headers = new Headers();
-    if (apiKey) headers.set("X-Api-Key", apiKey);
-    if (authScheme) headers.set("X-Auth-Scheme", authScheme);
-
-    const res = await fetch(`${apiUrl}/info`, {
-      headers,
-    });
-
-    return res.ok;
-  } catch (e) {
-    console.error(e);
-    return false;
-  }
 }
 
 const StreamSession = ({
