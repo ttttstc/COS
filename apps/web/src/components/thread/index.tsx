@@ -56,7 +56,7 @@ import {
 } from "@/lib/thread-summary";
 import { useWorkbenchPreferences } from "@/lib/workbench-preferences";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { useStreamContext } from "@/providers/Stream";
+import { useStreamContext, useStreamSettings } from "@/providers/Stream";
 import { useThreads } from "@/providers/Thread";
 
 import {
@@ -135,6 +135,7 @@ function toWorkbenchIssue(thread: LangGraphThread): WorkbenchIssue {
 
 export function Thread() {
   const stream = useStreamContext();
+  const { openSettings } = useStreamSettings();
   const messages = stream.messages;
   const isLoading = stream.isLoading;
   const [artifactContext, setArtifactContext] = useArtifactContext();
@@ -542,6 +543,7 @@ export function Thread() {
               startNewIssue(nextMode)
             }
             onOpenCommand={() => setCommandOpen(true)}
+            onOpenSettings={openSettings}
             onSelectIssue={selectIssue}
           />
         }

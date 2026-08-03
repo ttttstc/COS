@@ -1,12 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-test("connection setup keeps the ClauseOS optical environment", async ({
+test("home presents an immersive space hero with one entry action", async ({
   page,
 }) => {
-  const opticalAssets = new Set<string>();
+  let heroAssetLoaded = false;
   page.on("response", (response) => {
-    const url = response.url();
-    if (url.includes("/assets/optics/")) opticalAssets.add(url);
+    if (response.url().includes("/assets/home/clauseos-orbital-hero.png")) {
+      heroAssetLoaded = response.ok();
+    }
   });
 
   await page.goto("/");
@@ -14,15 +15,22 @@ test("connection setup keeps the ClauseOS optical environment", async ({
   await expect(
     page.getByRole("heading", { name: "刘亚楼参谋台" }),
   ).toBeVisible();
-  await expect(page.locator(".lyl-ambient-white-wash")).toHaveCount(1);
-  await expect(page.locator(".lyl-glass-surface")).toHaveCount(1);
-  await expect(page.locator(".lyl-glass-caustic")).toHaveCount(1);
-  await expect(page.locator(".lyl-prism-corner-light")).toHaveCount(2);
+  await expect(
+    page.getByText(
+      "拆解复杂议题、调研关键事实、权衡多方约束，并给出清晰可执行的决策建议。",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "设置" })).toHaveCount(0);
+  await expect(page.locator(".cos-stream-home__media")).toBeVisible();
+  const enterButton = page.getByRole("button", { name: /进入参谋台/ });
+  await expect(enterButton).toBeVisible();
+  await expect.poll(() => heroAssetLoaded).toBe(true);
 
-  await expect
-    .poll(() => [...opticalAssets].map((url) => new URL(url).pathname).sort())
-    .toEqual([
-      "/assets/optics/clauseos-caustic-light.png",
-      "/assets/optics/clauseos-prism-dispersion.png",
-    ]);
+  await enterButton.click();
+  await page.getByRole("button", { name: "打开设置" }).click();
+  await expect(page.getByRole("heading", { name: "连接设置" })).toBeVisible();
+  await expect(page.getByLabel("服务地址*")).toHaveValue(
+    "http://localhost:2024",
+  );
 });

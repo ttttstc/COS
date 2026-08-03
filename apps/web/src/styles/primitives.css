@@ -40,17 +40,17 @@
   content: "";
   filter: saturate(0.68) contrast(1.06);
   mix-blend-mode: screen;
-  opacity: 0.2;
+  opacity: var(--lyl-ambient-caustic-opacity);
 }
 
 .lyl-glass-surface {
-  --lyl-optics-border: rgba(235, 242, 255, 0.14);
-  --lyl-optics-rim-opacity: 0.7;
-  --lyl-optics-wash-opacity: 0.72;
-  --lyl-optics-arc-opacity: 0.58;
-  --lyl-optics-prism-opacity: 0.68;
-  --lyl-optics-prism-width: 54px;
-  --lyl-optics-sweep-opacity: 0.68;
+  --lyl-optics-border: var(--lyl-glass-border-base);
+  --lyl-optics-rim-opacity: 0.5;
+  --lyl-optics-wash-opacity: 0.34;
+  --lyl-optics-arc-opacity: 0.24;
+  --lyl-optics-prism-opacity: 0.3;
+  --lyl-optics-prism-size: var(--lyl-prism-corner-size);
+  --lyl-optics-sweep-opacity: 0.46;
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -96,84 +96,80 @@
 }
 
 .lyl-glass-surface[data-optics="minimal"] {
-  --lyl-optics-border: rgba(235, 242, 255, 0.09);
-  --lyl-optics-rim-opacity: 0.34;
+  --lyl-optics-border: var(--lyl-border-content);
+  --lyl-optics-rim-opacity: 0.24;
   --lyl-optics-wash-opacity: 0;
   --lyl-optics-arc-opacity: 0;
   --lyl-optics-prism-opacity: 0;
-  --lyl-optics-sweep-opacity: 0.2;
+  --lyl-optics-sweep-opacity: 0.12;
 }
 
 .lyl-glass-surface[data-optics="control"] {
-  --lyl-optics-border: rgba(235, 242, 255, 0.12);
-  --lyl-optics-rim-opacity: 0.46;
-  --lyl-optics-wash-opacity: 0.18;
-  --lyl-optics-arc-opacity: 0.1;
+  --lyl-optics-border: var(--lyl-glass-border-base);
+  --lyl-optics-rim-opacity: 0.34;
+  --lyl-optics-wash-opacity: 0.1;
+  --lyl-optics-arc-opacity: 0.06;
   --lyl-optics-prism-opacity: 0;
-  --lyl-optics-sweep-opacity: 0.34;
-  --lyl-optics-prism-width: 28px;
+  --lyl-optics-sweep-opacity: 0.22;
 }
 
 .lyl-glass-surface[data-optics="row"] {
-  --lyl-optics-border: rgba(245, 248, 255, 0.18);
-  --lyl-optics-rim-opacity: 0.66;
-  --lyl-optics-wash-opacity: 0.34;
-  --lyl-optics-arc-opacity: 0.28;
-  --lyl-optics-prism-opacity: 0.16;
-  --lyl-optics-sweep-opacity: 0.54;
-  --lyl-optics-prism-width: 38px;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.4;
+  --lyl-optics-wash-opacity: 0.18;
+  --lyl-optics-arc-opacity: 0.12;
+  --lyl-optics-prism-opacity: 0.08;
+  --lyl-optics-sweep-opacity: 0.32;
 }
 
 .lyl-glass-surface[data-optics="popover"] {
-  --lyl-optics-border: rgba(245, 248, 255, 0.16);
-  --lyl-optics-rim-opacity: 0.76;
-  --lyl-optics-wash-opacity: 0.72;
-  --lyl-optics-arc-opacity: 0.68;
-  --lyl-optics-prism-opacity: 0.54;
-  --lyl-optics-sweep-opacity: 0.68;
-  --lyl-optics-prism-width: 46px;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.5;
+  --lyl-optics-wash-opacity: 0.46;
+  --lyl-optics-arc-opacity: 0.34;
+  --lyl-optics-prism-opacity: 0.24;
+  --lyl-optics-sweep-opacity: 0.46;
 }
 
 .lyl-glass-surface[data-optics="panel"] {
-  --lyl-optics-border: rgba(245, 248, 255, 0.13);
-  --lyl-optics-rim-opacity: 0.7;
-  --lyl-optics-wash-opacity: 0.66;
-  --lyl-optics-arc-opacity: 0.58;
-  --lyl-optics-prism-opacity: 0.6;
-  --lyl-optics-sweep-opacity: 0.68;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.46;
+  --lyl-optics-wash-opacity: 0.38;
+  --lyl-optics-arc-opacity: 0.28;
+  --lyl-optics-prism-opacity: 0.3;
+  --lyl-optics-sweep-opacity: 0.44;
 }
 
 .lyl-glass-surface[data-optics="palette"] {
-  --lyl-optics-border: rgba(250, 252, 255, 0.18);
-  --lyl-optics-rim-opacity: 0.9;
-  --lyl-optics-wash-opacity: 0.92;
-  --lyl-optics-arc-opacity: 0.76;
-  --lyl-optics-prism-opacity: 0.86;
-  --lyl-optics-sweep-opacity: 0.88;
-  --lyl-optics-prism-width: 72px;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.64;
+  --lyl-optics-wash-opacity: 0.64;
+  --lyl-optics-arc-opacity: 0.4;
+  --lyl-optics-prism-opacity: 0.46;
+  --lyl-optics-prism-size: var(--lyl-prism-corner-size-hero);
+  --lyl-optics-sweep-opacity: 0.62;
 }
 
 .lyl-glass-surface[data-optics="shell"] {
-  --lyl-optics-border: rgba(250, 252, 255, 0.14);
-  --lyl-optics-rim-opacity: 0.82;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.58;
   --lyl-optics-wash-opacity: 0;
-  --lyl-optics-arc-opacity: 0.68;
-  --lyl-optics-prism-opacity: 0.72;
-  --lyl-optics-sweep-opacity: 0.78;
-  --lyl-optics-prism-width: 64px;
-  background-color: rgba(4, 6, 9, 0.42);
-  backdrop-filter: blur(22px) saturate(122%) brightness(0.58);
-  -webkit-backdrop-filter: blur(22px) saturate(122%) brightness(0.58);
+  --lyl-optics-arc-opacity: 0.34;
+  --lyl-optics-prism-opacity: 0.36;
+  --lyl-optics-prism-size: var(--lyl-prism-corner-size-hero);
+  --lyl-optics-sweep-opacity: 0.54;
+  background-color: var(--lyl-glass-smoke-regular);
+  backdrop-filter: var(--lyl-glass-filter-regular);
+  -webkit-backdrop-filter: var(--lyl-glass-filter-regular);
 }
 
 .lyl-glass-surface[data-optics="table"] {
-  --lyl-optics-border: rgba(250, 252, 255, 0.16);
-  --lyl-optics-rim-opacity: 0.84;
-  --lyl-optics-wash-opacity: 0.56;
-  --lyl-optics-arc-opacity: 0.62;
-  --lyl-optics-prism-opacity: 0.72;
-  --lyl-optics-sweep-opacity: 0.8;
-  --lyl-optics-prism-width: 62px;
+  --lyl-optics-border: var(--lyl-glass-border-soft);
+  --lyl-optics-rim-opacity: 0.58;
+  --lyl-optics-wash-opacity: 0.36;
+  --lyl-optics-arc-opacity: 0.34;
+  --lyl-optics-prism-opacity: 0.32;
+  --lyl-optics-sweep-opacity: 0.56;
 }
 
 .lyl-glass-surface[data-interactive="true"]:hover {
@@ -226,18 +222,18 @@
   background:
     linear-gradient(
         90deg,
-        rgba(255, 255, 255, 0.92),
-        rgba(255, 255, 255, 0.4) 18%,
-        rgba(255, 255, 255, 0.12) 54%,
+        var(--lyl-glass-border-hot),
+        var(--lyl-glass-border-physical) 18%,
+        var(--lyl-glass-border) 54%,
         rgba(255, 255, 255, 0.035) 82%,
         transparent
       )
       top left / 100% 1px no-repeat,
     linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.84),
-        rgba(255, 255, 255, 0.3) 24%,
-        rgba(255, 255, 255, 0.085) 62%,
+        var(--lyl-glass-border-hot),
+        var(--lyl-glass-border) 24%,
+        var(--lyl-glass-border-base) 62%,
         transparent
       )
       top left / 1px 100% no-repeat,
@@ -245,16 +241,16 @@
         180deg,
         rgba(255, 255, 255, 0.035),
         rgba(255, 255, 255, 0.055) 52%,
-        rgba(255, 255, 255, 0.18) 82%,
-        rgba(255, 255, 255, 0.48)
+        var(--lyl-glass-border-base) 82%,
+        var(--lyl-glass-border-physical)
       )
       top right / 1px 100% no-repeat,
     linear-gradient(
         90deg,
         transparent,
         rgba(255, 255, 255, 0.035) 48%,
-        rgba(255, 255, 255, 0.1) 74%,
-        rgba(255, 255, 255, 0.42)
+        var(--lyl-glass-border-base) 74%,
+        var(--lyl-glass-border-physical)
       )
       bottom left / 100% 1px no-repeat;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.34);
@@ -280,39 +276,34 @@
   background: radial-gradient(
     70% 54% at -7% -10%,
     var(--lyl-caustic-white),
-    rgba(255, 255, 255, 0.052) 24%,
+    var(--lyl-caustic-soft) 24%,
     transparent 58%
   );
   opacity: var(--lyl-optics-wash-opacity);
 }
 
 .lyl-glass-caustic::after {
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    ellipse 58% 46% at 116% 124%,
-    transparent 68.8%,
-    rgba(255, 255, 255, 0.016) 69.6%,
-    var(--lyl-caustic-arc) 70.15%,
-    rgba(255, 255, 255, 0.032) 70.8%,
-    transparent 73.2%
-  );
-  filter: blur(0.35px);
+  right: -4px;
+  bottom: -4px;
+  width: min(420px, 78%);
+  height: min(236px, 68%);
+  background-image: var(--lyl-caustic-texture);
+  background-position: left top;
+  background-repeat: no-repeat;
+  background-size: 420px 236px;
+  filter: saturate(0.32) brightness(0.78);
   opacity: var(--lyl-optics-arc-opacity);
-  -webkit-mask-image: linear-gradient(
-    116deg,
-    transparent 44%,
-    rgba(0, 0, 0, 0.08) 57%,
-    #000 73%,
-    rgba(0, 0, 0, 0.68) 86%,
+  transform: rotate(180deg);
+  -webkit-mask-image: radial-gradient(
+    ellipse 105% 100% at 0 0,
+    #000 0,
+    rgba(0, 0, 0, 0.74) 64%,
     transparent 100%
   );
-  mask-image: linear-gradient(
-    116deg,
-    transparent 44%,
-    rgba(0, 0, 0, 0.08) 57%,
-    #000 73%,
-    rgba(0, 0, 0, 0.68) 86%,
+  mask-image: radial-gradient(
+    ellipse 105% 100% at 0 0,
+    #000 0,
+    rgba(0, 0, 0, 0.74) 64%,
     transparent 100%
   );
 }
@@ -386,14 +377,15 @@
 }
 
 .lyl-prism-corner-light {
-  width: 6px;
-  height: min(var(--lyl-optics-prism-width), 52px, 22%);
-  background: radial-gradient(
-    ellipse 7px 18px at 100% 0,
-    rgba(255, 255, 255, 0.3),
-    rgba(255, 255, 255, 0.075) 30%,
-    transparent 72%
-  );
+  width: var(--lyl-optics-prism-size);
+  height: var(--lyl-space-4);
+  overflow: hidden;
+  background-image: var(--lyl-prism-texture);
+  background-position: 90% 10%;
+  background-repeat: no-repeat;
+  background-size: 420px 236px;
+  filter: saturate(var(--lyl-prism-saturation))
+    brightness(var(--lyl-prism-brightness));
   mix-blend-mode: screen;
   opacity: var(--lyl-optics-prism-opacity);
 }
@@ -407,144 +399,125 @@
 
 .lyl-prism-corner-light::before {
   top: 0;
-  right: 3px;
-  width: 1px;
-  height: 100%;
+  right: 0;
+  width: var(--lyl-prism-band-width);
+  height: calc(100% - var(--lyl-space-1));
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.94),
-    rgba(255, 255, 255, 0.28) 16%,
-    rgba(255, 255, 255, 0.08) 48%,
-    transparent 82%
+    var(--lyl-prism-white-core),
+    rgba(255, 255, 255, 0.12) 42%,
+    transparent 86%
   );
-  box-shadow: -1px 0 5px rgba(255, 255, 255, 0.08);
+  box-shadow: calc(0px - var(--lyl-prism-band-width)) 1px
+    var(--lyl-prism-spread) rgba(255, 255, 255, 0.12);
 }
 
 .lyl-prism-corner-light::after {
-  top: 4px;
+  top: var(--lyl-space-1);
   right: 0;
-  width: 4px;
-  height: calc(100% - 4px);
+  width: calc(var(--lyl-prism-spread) + var(--lyl-prism-band-width));
+  height: calc(100% - var(--lyl-space-1));
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.46),
-    var(--lyl-prism-red) 18%,
-    var(--lyl-prism-amber) 34%,
+    transparent,
+    var(--lyl-prism-violet) 18%,
+    var(--lyl-prism-blue) 34%,
     var(--lyl-prism-green) 50%,
-    var(--lyl-prism-blue) 68%,
-    var(--lyl-prism-violet) 84%,
-    transparent
+    var(--lyl-prism-amber) 66%,
+    var(--lyl-prism-red) 82%,
+    var(--lyl-prism-white-core)
   );
-  box-shadow: -1px 0 3px rgba(92, 174, 255, 0.08);
-  -webkit-mask-image: linear-gradient(
-    #000,
-    rgba(0, 0, 0, 0.56) 44%,
-    transparent
-  );
-  mask-image: linear-gradient(#000, rgba(0, 0, 0, 0.56) 44%, transparent);
+  opacity: var(--lyl-prism-chroma);
+  -webkit-mask-image: linear-gradient(#000, transparent 84%);
+  mask-image: linear-gradient(#000, transparent 84%);
 }
 
 .lyl-prism-corner-light[data-corner="top-right"] {
   top: -1px;
-  right: 0;
+  right: -1px;
+  -webkit-mask-image: radial-gradient(
+    ellipse 100% 135% at 100% 0,
+    #000 0,
+    rgba(0, 0, 0, 0.82) 46%,
+    transparent 88%
+  );
+  mask-image: radial-gradient(
+    ellipse 100% 135% at 100% 0,
+    #000 0,
+    rgba(0, 0, 0, 0.82) 46%,
+    transparent 88%
+  );
 }
 
 .lyl-prism-corner-light[data-corner="bottom-right"] {
-  right: 0;
+  right: -1px;
   bottom: -1px;
-  width: min(32px, var(--lyl-optics-prism-width));
-  height: 6px;
-  background: radial-gradient(
-    ellipse 16px 6px at 100% 100%,
-    rgba(255, 255, 255, 0.2),
-    rgba(255, 255, 255, 0.045) 32%,
-    transparent 72%
+  width: min(32px, var(--lyl-optics-prism-size));
+  height: calc(var(--lyl-space-2) + var(--lyl-space-1));
+  background-position: 90% 90%;
+  filter: saturate(var(--lyl-prism-exit-saturation))
+    brightness(var(--lyl-prism-brightness))
+    opacity(var(--lyl-prism-exit-energy));
+  opacity: var(--lyl-optics-prism-opacity);
+  -webkit-mask-image: radial-gradient(
+    ellipse 120% 145% at 100% 100%,
+    #000 0,
+    rgba(0, 0, 0, 0.72) 50%,
+    transparent 90%
   );
-  filter: brightness(0.9);
-  opacity: calc(var(--lyl-optics-prism-opacity) * 0.52);
+  mask-image: radial-gradient(
+    ellipse 120% 145% at 100% 100%,
+    #000 0,
+    rgba(0, 0, 0, 0.72) 50%,
+    transparent 90%
+  );
 }
 
 .lyl-prism-corner-light[data-corner="bottom-right"]::before {
   top: auto;
   right: 0;
-  bottom: 3px;
+  bottom: 0;
   width: 100%;
-  height: 1px;
+  height: var(--lyl-prism-band-width);
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.06) 42%,
-    rgba(255, 255, 255, 0.22) 76%,
-    rgba(255, 255, 255, 0.8)
+    rgba(255, 255, 255, 0.08) 42%,
+    var(--lyl-prism-white-core)
   );
-  box-shadow: 0 -1px 4px rgba(255, 255, 255, 0.07);
+  box-shadow: -1px calc(0px - var(--lyl-prism-band-width))
+    var(--lyl-prism-spread) rgba(255, 255, 255, 0.1);
 }
 
 .lyl-prism-corner-light[data-corner="bottom-right"]::after {
   top: auto;
-  right: 4px;
+  right: var(--lyl-space-1);
   bottom: 0;
-  width: calc(100% - 4px);
-  height: 4px;
+  width: calc(100% - var(--lyl-space-1));
+  height: calc(var(--lyl-prism-spread) + var(--lyl-prism-band-width));
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.4),
-    var(--lyl-prism-red) 18%,
-    var(--lyl-prism-amber) 34%,
+    transparent,
+    var(--lyl-prism-violet) 18%,
+    var(--lyl-prism-blue) 34%,
     var(--lyl-prism-green) 50%,
-    var(--lyl-prism-blue) 68%,
-    var(--lyl-prism-violet) 84%,
-    transparent
+    var(--lyl-prism-amber) 66%,
+    var(--lyl-prism-red) 82%,
+    var(--lyl-prism-white-core)
   );
-  box-shadow: 0 -1px 3px rgba(92, 174, 255, 0.06);
+  opacity: var(--lyl-prism-chroma);
   -webkit-mask-image: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 0, 0, 0.46) 42%,
+    rgba(0, 0, 0, 0.46) 46%,
     #000
   );
   mask-image: linear-gradient(
     90deg,
     transparent,
-    rgba(0, 0, 0, 0.46) 42%,
+    rgba(0, 0, 0, 0.46) 46%,
     #000
   );
-}
-
-/* Generated optical passes provide the irregular energy falloff that a
-   stack of linear gradients cannot reproduce. The masks keep each pass local
-   to the requested physical corner and black disappears under screen blend. */
-.lyl-prism-corner-light {
-  inset: 0;
-  width: auto;
-  height: auto;
-  background-image: var(--lyl-prism-texture);
-  background-position: center;
-  background-size: 100% 100%;
-  filter: saturate(0.82) brightness(0.94);
-}
-
-.lyl-prism-corner-light::before,
-.lyl-prism-corner-light::after {
-  display: none;
-}
-
-.lyl-prism-corner-light[data-corner="top-right"] {
-  inset: 0;
-  background-position: 50% 87%;
-  background-size: 118% 118%;
-  clip-path: inset(0 0 70% 70%);
-}
-
-.lyl-prism-corner-light[data-corner="bottom-right"] {
-  inset: 0;
-  width: auto;
-  height: auto;
-  filter: saturate(0.74) brightness(0.92);
-  opacity: calc(var(--lyl-optics-prism-opacity) * 0.72);
-  background-position: 50% 25%;
-  background-size: 118% 118%;
-  clip-path: inset(70% 0 0 70%);
 }
 
 .lyl-content-surface {

@@ -93,16 +93,19 @@ In a second terminal, from the repository root:
 pnpm dev
 ```
 
-Open `http://localhost:3000`. Create a conversation and send a message. The
-stub Agent streams `本地 LangGraph 基线已连接。`
+Open `http://localhost:3000`. The preserved “刘亚楼参谋台” orbital landing
+page is the product entry; select **进入参谋台** to open the desktop workbench.
+Connection settings remain available from **设置** at the lower-left of the
+issue navigator. Create an issue and send a message; the stub Agent streams
+`本地 LangGraph 基线已连接。`
 
 首屏可选择“下一步、决策、调研、诊断”四种模式，也可直接输入进入自由讨论。
 所选模式随每次消息作为 LangGraph Run Context 发送，并持久化在 Thread state（旧 Thread metadata 仍作为兼容回退）。
 
 ## Production Web configuration
 
-生产构建不会显示 Deployment URL、Assistant ID 或 API Key 配置表单。Web 默认
-通过同源 `/api` Proxy 连接 Agent；部署时设置服务端变量：
+Web 默认通过同源 `/api` Proxy 连接 Agent；部署时设置服务端变量。工作台内的
+连接设置用于本地开发与自部署调试，生产 Stream 不会转发浏览器保存的 API Key：
 
 ```dotenv
 LANGGRAPH_API_URL=https://your-agent.example.com
@@ -254,8 +257,9 @@ upstream interaction foundations intact. Formal counsel behavior remains deferre
 
 ## ClauseOS desktop UI implementation
 
-Issue [#20](https://github.com/ttttstc/COS/issues/20) contains the Codex-ready
-implementation plan for the desktop-only ClauseOS issue workbench.
+Issue [#20](https://github.com/ttttstc/COS/issues/20) delivered the desktop-only
+ClauseOS issue workbench. Production React surfaces are available at `/`, with
+deterministic visual fixtures at `/workbench-preview` and `/control-gallery`.
 
 Required design inputs:
 

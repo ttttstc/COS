@@ -162,6 +162,7 @@ export interface IssueNavigatorProps {
   onCreateIssue(): void;
   onModeSelect(mode: ActiveCounselMode): void;
   onOpenCommand?(): void;
+  onOpenSettings?(): void;
   onSelectIssue(id: string): void;
   selectedIssueId?: string;
 }
@@ -173,6 +174,7 @@ export function IssueNavigator({
   onCreateIssue,
   onModeSelect,
   onOpenCommand,
+  onOpenSettings,
   onSelectIssue,
   selectedIssueId,
 }: IssueNavigatorProps) {
@@ -253,6 +255,19 @@ export function IssueNavigator({
         </section>
 
         <div className="cos-workbench__navigator-footer">
+          <button
+            type="button"
+            className="cos-workbench__settings-trigger"
+            onClick={onOpenSettings}
+            disabled={!onOpenSettings}
+            aria-label="打开设置"
+          >
+            <LYL_ICON_MAP.settings
+              size={18}
+              aria-hidden="true"
+            />
+            <span>设置</span>
+          </button>
           <button
             type="button"
             className="cos-workbench__command-trigger"
