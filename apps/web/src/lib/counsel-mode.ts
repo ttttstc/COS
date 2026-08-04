@@ -70,3 +70,17 @@ export function buildCounselRunContext(
 ): Record<string, unknown> & { mode: CounselMode } {
   return { ...context, mode };
 }
+
+export function toCoreCounselMode(mode: CounselMode): CounselSurfaceMode {
+  return LEGACY_MODE_TO_CORE_MODE[mode];
+}
+import type { CounselSurfaceMode } from "./counsel-contract";
+
+export const LEGACY_MODE_TO_CORE_MODE: Record<CounselMode, CounselSurfaceMode> =
+  {
+    ask: "next_action",
+    decide: "next_action",
+    research: "deep_research",
+    diagnose: "historical_reflection",
+    discuss: "discuss",
+  };

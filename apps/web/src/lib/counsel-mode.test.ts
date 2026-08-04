@@ -4,6 +4,7 @@ import {
   buildCounselRunContext,
   getCounselMode,
   readCounselMode,
+  toCoreCounselMode,
 } from "./counsel-mode";
 
 describe("counsel modes", () => {
@@ -27,5 +28,11 @@ describe("counsel modes", () => {
       source: "artifact",
       mode: "decide",
     });
+  });
+
+  it("maps legacy persisted modes to the #34 core surface", () => {
+    expect(toCoreCounselMode("ask")).toBe("next_action");
+    expect(toCoreCounselMode("research")).toBe("deep_research");
+    expect(toCoreCounselMode("diagnose")).toBe("historical_reflection");
   });
 });

@@ -5,12 +5,37 @@ from datetime import datetime, timezone
 import json
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from lyl_agent.contracts import artifact_ref
 from lyl_agent.state import CounselMode, CounselState
 
-ArtifactType = Literal["next_action", "decision", "research", "diagnosis"]
+ArtifactType = Literal[
+    "next_action",
+    "decision",
+    "research",
+    "diagnosis",
+    "research_report",
+    "thinking_coach",
+    "historical_reflection",
+]
 ArtifactStatus = Literal["draft", "final", "superseded"]
+
+
+class NextActionCardV2(BaseModel):
+    """Grouped V2 protocol, kept alongside flat fields for old clients."""
+
+    scope: dict[str, str]
+    intent: dict[str, object]
+    situation: dict[str, object]
+    diagnosis: dict[str, object]
+    counsel: dict[str, str]
+    action_order: dict[str, object]
+    not_now: list[str]
+    risk_control: dict[str, object]
+    feedback: dict[str, object]
+    confidence: dict[str, object]
+    user_decision_needed: dict[str, object] | None = None
 
 
 class NextActionCard(BaseModel):
@@ -40,6 +65,11 @@ class NextActionCard(BaseModel):
     main_risk: str = ""
     guardrail: str = ""
     recovery: str = ""
+    not_doing_cost: str = ""
+    resource_cost: str = ""
+    side_effects: list[str] = Field(default_factory=list)
+    recovery_path: str = ""
+    preserves_optionality: bool = True
     observe: list[str] = Field(default_factory=list)
     review_when: str = ""
     confidence_basis: str = ""
@@ -57,6 +87,14 @@ class NextActionCard(BaseModel):
     confidence: int = Field(ge=0, le=100)
     need_research: bool
     reconsider_when: list[str]
+    unresolved_unknowns: list[str] = Field(default_factory=list)
+    protocol_v2: NextActionCardV2 | None = None
+
+    @model_validator(mode="after")
+    def populate_protocol_v2(self) -> "NextActionCard":
+        if self.protocol_v2 is None:
+            self.protocol_v2 = _protocol_v2(self)
+        return self
 
 
 class DecisionOption(BaseModel):
@@ -126,6 +164,18 @@ class CounselArtifact(BaseModel):
     version: int = Field(ge=1)
     status: ArtifactStatus
     change_reason: str | None = None
+    issue_id: str | None = None
+    subject: str = ""
+    context_snapshot_id: str | None = None
+    facts: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    confidence_basis: str = ""
+    reconsider_when: list[str] = Field(default_factory=list)
+    source_skill: str = ""
+    source_version: str = "v1"
+    supersedes: list[str] = Field(default_factory=list)
+    superseded_by: list[str] = Field(default_factory=list)
     decision_snapshot: dict[str, object] | None = None
     tabs: ArtifactTabs
 
@@ -141,6 +191,69 @@ DEFAULT_RECONSIDER_WHEN = [
     "目标或关键约束发生变化",
     "出现与当前判断相冲突的新证据",
 ]
+
+
+def _confidence_level(value: int) -> Literal["high", "medium", "low"]:
+    if value >= 80:
+        return "high"
+    if value >= 55:
+        return "medium"
+    return "low"
+
+
+def _protocol_v2(card: NextActionCard) -> NextActionCardV2:
+    """Build the grouped V2 view without removing flat compatibility fields."""
+
+    return NextActionCardV2(
+        scope={
+            "request_scope": card.request_scope or card.scope,
+            "time_horizon": card.time_horizon,
+        },
+        intent={
+            "desired_state": card.desired_state,
+            "protected_interests": card.protected_interests,
+        },
+        situation={
+            "current_stage": card.current_stage,
+            "state_delta": card.state_delta,
+            "facts": card.confirmed_facts,
+            "assumptions": card.assumptions,
+        },
+        diagnosis={
+            "blocker_type": card.blocker_type,
+            "main_contradiction": card.main_contradiction,
+            "decisive_condition": card.decisive_condition,
+        },
+        counsel={
+            "judgment": card.judgment,
+            "recommended_mode": card.recommended_mode,
+        },
+        action_order={
+            "action": card.action_title,
+            "first_move": card.first_move,
+            "deliverable": card.deliverable,
+            "done_when": card.done_when,
+            "timebox": card.timebox,
+            "expected_state_change": card.expected_state_change,
+        },
+        not_now=card.not_now,
+        risk_control={
+            "main_risk": card.main_risk,
+            "guardrail": card.guardrail,
+            "recovery": card.recovery_path or card.recovery,
+        },
+        feedback={
+            "observe": card.observe,
+            "review_when": card.review_when,
+            "reconsider_when": card.reconsider_when,
+        },
+        confidence={
+            "level": _confidence_level(card.confidence),
+            "basis": card.confidence_basis,
+            "unresolved_unknowns": card.unresolved_unknowns,
+        },
+        user_decision_needed=card.user_decision_needed,
+    )
 
 
 def _next_version(state: CounselState) -> int:
@@ -375,6 +488,11 @@ def _draft_card(state: CounselState) -> CounselCard:
         main_risk=state.get("main_risk") or "行动投入超过当前证据能支持的范围。",
         guardrail=state.get("guardrail") or "设置时间与投入上限。",
         recovery=state.get("recovery") or "记录失败原因并缩小下一轮动作。",
+        not_doing_cost=state.get("not_doing_cost") or "继续等待会延后关键反馈。",
+        resource_cost=state.get("resource_cost") or "投入不超过本轮设定的时间和资源上限。",
+        side_effects=state.get("side_effects") or ["占用本轮有限的时间和注意力"],
+        recovery_path=state.get("recovery_path") or state.get("recovery") or "记录失败原因并回到决胜条件。",
+        preserves_optionality=state.get("preserves_optionality", True),
         observe=state.get("observe") or ["完成标准是否达成"],
         review_when=state.get("review_when") or "完成主行动后复盘",
         confidence_basis=state.get("confidence_basis") or "基于现有上下文和完成标准。",
@@ -392,6 +510,7 @@ def _draft_card(state: CounselState) -> CounselCard:
         confidence=confidence,
         need_research=state.get("need_research", False),
         reconsider_when=reconsider_when,
+        unresolved_unknowns=state.get("unresolved_unknowns", []),
     )
 
 
@@ -399,6 +518,20 @@ def build_draft_artifact(state: CounselState) -> CounselArtifact:
     mode = state.get("mode", "discuss")
     question = state.get("normalized_question") or state.get("raw_request") or "当前议题"
     snapshot = state.get("context_snapshot")
+    snapshot_id = snapshot.get("id") if isinstance(snapshot, dict) else None
+    previous_versions = state.get("artifact_versions", [])
+    supersedes = [
+        artifact_ref(item.get("artifact_type"), item.get("version"))
+        for item in previous_versions
+        if isinstance(item, dict) and item.get("status") == "final"
+    ]
+    source_skill = {
+        "ask": "next_action",
+        "decide": "decision_reasoning",
+        "research": "deep_research",
+        "diagnose": "historical_reflection",
+        "discuss": "discuss",
+    }.get(mode, mode)
     return CounselArtifact(
         artifact_type=ARTIFACT_TYPE_BY_MODE[mode],
         title=question[:80],
@@ -409,6 +542,16 @@ def build_draft_artifact(state: CounselState) -> CounselArtifact:
             if state.get("artifact_versions")
             else None
         ),
+        issue_id=state.get("thread_id"),
+        subject=question,
+        context_snapshot_id=snapshot_id if isinstance(snapshot_id, str) else None,
+        facts=state.get("facts", []) or state.get("confirmed_facts", []),
+        assumptions=state.get("assumptions", []),
+        unknowns=state.get("unresolved_unknowns", []),
+        confidence_basis=state.get("confidence_basis") or "",
+        reconsider_when=state.get("reconsider_when") or [],
+        source_skill=source_skill,
+        supersedes=supersedes,
         decision_snapshot=state.get("decision_snapshot"),
         tabs=ArtifactTabs(
             counsel=_draft_card(state),
@@ -456,6 +599,11 @@ def finalize_artifact(
         card.main_risk = state.get("main_risk") or card.main_risk
         card.guardrail = state.get("guardrail") or card.guardrail
         card.recovery = state.get("recovery") or card.recovery
+        card.not_doing_cost = state.get("not_doing_cost") or card.not_doing_cost
+        card.resource_cost = state.get("resource_cost") or card.resource_cost
+        card.side_effects = state.get("side_effects") or card.side_effects
+        card.recovery_path = state.get("recovery_path") or card.recovery_path or card.recovery
+        card.preserves_optionality = state.get("preserves_optionality", card.preserves_optionality)
         card.observe = state.get("observe") or card.observe
         card.review_when = state.get("review_when") or card.review_when
         card.confidence_basis = state.get("confidence_basis") or card.confidence_basis
@@ -468,6 +616,7 @@ def finalize_artifact(
             card.confidence = state["confidence"]
         card.need_research = state.get("need_research", card.need_research)
         card.reconsider_when = state.get("reconsider_when") or card.reconsider_when
+        card.unresolved_unknowns = state.get("unresolved_unknowns") or card.unresolved_unknowns
         card.action_title = state.get("action_title") or recommendation
         # The chat transcript may contain the expanded executive brief. Keep
         # the artifact's primary recommendation as the concise action so the
@@ -500,6 +649,14 @@ def finalize_artifact(
         card.next_practice = recommendation
 
     if isinstance(card, NextActionCard):
+        card.protocol_v2 = _protocol_v2(card)
+
+    superseded = [
+        artifact_ref(item.get("artifact_type"), item.get("version"))
+        for item in state.get("artifact_versions", [])
+        if isinstance(item, dict) and item.get("status") == "final"
+    ]
+    if isinstance(card, NextActionCard):
         final_snapshot = {
             "subject": state.get("normalized_question") or state.get("raw_request") or draft.title,
             "desired_state": state.get("desired_state") or "",
@@ -513,20 +670,40 @@ def finalize_artifact(
             "review_trigger": state.get("reconsider_when") or card.reconsider_when,
             "not_now": state.get("not_now") or card.pause_or_stop,
             "continuation_status": state.get("continuation_status") or "new",
+            "superseded_decisions": superseded,
         }
         final = draft.model_copy(
-            update={"status": "final", "decision_snapshot": final_snapshot},
+            update={
+                "status": "final",
+                "decision_snapshot": final_snapshot,
+                "supersedes": superseded,
+                "superseded_by": [],
+            },
             deep=True,
         )
     else:
-        final = draft.model_copy(update={"status": "final"}, deep=True)
+        final = draft.model_copy(
+            update={
+                "status": "final",
+                "supersedes": superseded,
+                "superseded_by": [],
+            },
+            deep=True,
+        )
     versions: list[dict[str, object]] = []
+    current_ref = artifact_ref(final.artifact_type, final.version)
     for item in state.get("artifact_versions", []):
         if not isinstance(item, dict):
             continue
         previous = deepcopy(item)
         if previous.get("status") == "final":
             previous["status"] = "superseded"
+            superseded_by = previous.get("superseded_by")
+            if not isinstance(superseded_by, list):
+                superseded_by = []
+            if current_ref not in superseded_by:
+                superseded_by.append(current_ref)
+            previous["superseded_by"] = superseded_by
         versions.append(previous)
     versions.append(final.model_dump(mode="json"))
     return final, versions

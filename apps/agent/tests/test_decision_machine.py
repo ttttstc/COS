@@ -160,3 +160,67 @@ def test_commitment_test_requires_start_output_done_and_state_change() -> None:
         done_when=["完成三问"],
         expected_state_change="从模糊到可验证",
     )
+
+
+def test_issue_32_candidate_protocol_carries_control_dimensions() -> None:
+    updates, _ = normalize_ask(
+        {"raw_request": "项目目标太大，不知道下一步怎么开始"},
+        {
+            "candidate_actions": [
+                {
+                    "id": "small-test",
+                    "title": "先做最小验证",
+                    "description": "用一个小样本验证关键假设。",
+                    "reversibility": 5,
+                }
+            ]
+        },
+        "",
+    )
+
+    candidate = updates["candidate_actions"][0]
+    for field in (
+        "why_now",
+        "not_doing_cost",
+        "resource_cost",
+        "recovery_path",
+    ):
+        assert isinstance(candidate[field], str) and candidate[field]
+    assert isinstance(candidate["side_effects"], list)
+    assert candidate["preserves_optionality"] is True
+    assert updates["not_doing_cost"]
+    assert updates["resource_cost"]
+    assert updates["recovery_path"]
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "项目目标明确但任务太大，无法启动",
+        "多个事项并行，我需要判断全局优先级",
+        "缺少一个会改变方向的关键事实",
+        "信息已经足够但我迟迟没有拍板",
+        "时间和预算只能优先一个，怎么取舍？",
+        "还在等待外部权限和依赖",
+        "我知道该做什么但一直拖延启动",
+        "工作完成了但没有验收标准",
+        "这个方向先暂停，什么时候恢复？",
+        "这个项目已经不值得继续了",
+        "这是高风险且不可逆的选择",
+        "同一议题上次建议执行后反馈不理想",
+    ],
+)
+def test_issue_32_real_scenario_shape_is_complete(prompt: str) -> None:
+    updates, _ = normalize_ask({"raw_request": prompt}, {}, "")
+    assert updates["blocker_type"]
+    assert updates["decisive_condition"]
+    assert updates["recommended_mode"]
+    assert updates["selected_action_id"]
+    assert updates["first_move"]
+    assert updates["deliverable"]
+    assert updates["completion_criteria"]
+    assert updates["not_now"]
+    assert updates["main_risk"]
+    assert updates["guardrail"]
+    assert updates["recovery_path"]
+    assert updates["reconsider_when"]

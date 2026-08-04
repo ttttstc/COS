@@ -38,6 +38,36 @@ describe("counsel artifact schema", () => {
     });
   });
 
+  it("accepts the #34 lineage envelope and future core artifact names", () => {
+    const result = parseCounselArtifact({
+      artifact_type: "research_report",
+      title: "研究报告",
+      version: 2,
+      status: "final",
+      source_skill: "deep_research",
+      source_version: "v1",
+      supersedes: ["research_report:v1"],
+      superseded_by: [],
+      tabs: {
+        counsel: {
+          current_stage: "形成报告",
+          main_contradiction: "证据不足",
+          recommendation: "先核对一手来源",
+          confidence: 70,
+          reconsider_when: ["出现反证"],
+        },
+      },
+    });
+
+    expect(result).toMatchObject({
+      artifact: {
+        artifactType: "research_report",
+        sourceSkill: "deep_research",
+        supersedes: ["research_report:v1"],
+      },
+    });
+  });
+
   it.each([
     [
       "decision",
