@@ -365,6 +365,7 @@ export interface IssueComposerProps {
   placeholder?: string;
   sendSlot?: ReactNode;
   statusSlot?: ReactNode;
+  submitDisabled?: boolean;
   stopSlot?: ReactNode;
   streaming?: boolean;
   value: string;
@@ -388,6 +389,7 @@ export function IssueComposer({
   placeholder = getCounselMode(mode).placeholder,
   sendSlot,
   statusSlot,
+  submitDisabled = false,
   stopSlot,
   streaming = false,
   value,
@@ -397,7 +399,7 @@ export function IssueComposer({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (disabled || streaming || !submitEnabled) return;
+    if (disabled || submitDisabled || streaming || !submitEnabled) return;
     onSubmit();
   };
 
@@ -406,7 +408,7 @@ export function IssueComposer({
       type="submit"
       variant="primary"
       label="发送议题"
-      disabled={disabled || !submitEnabled}
+      disabled={disabled || submitDisabled || !submitEnabled}
     >
       <LYL_ICON_MAP.send
         size={18}
@@ -678,11 +680,11 @@ export function StageProgress({
       className={cn("cos-stage-progress", className)}
       aria-label={label}
     >
-      {items.map((item) => {
+      {items.map((item, index) => {
         const statusMeta = ACTIVITY_STATUS[item.state];
         return (
           <li
-            key={item.id}
+            key={`${item.id}-${index}`}
             className="cos-stage-progress__item"
             data-state={item.state}
             aria-current={item.state === "running" ? "step" : undefined}
@@ -931,7 +933,59 @@ export interface CounselSummary {
   deferItems: string[];
   mainContradiction: string;
   recommendation: string;
+  situationAssessment?: string;
+  keyJudgments?: string[];
+  executionSteps?: string[];
+  riskControls?: string[];
+  whyNow?: string;
+  decisiveCondition?: string;
+  recommendedMode?: string;
+  blockerType?: string;
+  stateDelta?: string;
+  firstMove?: string;
+  deliverable?: string;
+  timebox?: string;
+  expectedStateChange?: string;
+  mainRisk?: string;
+  guardrail?: string;
+  recovery?: string;
+  observe?: string[];
+  reviewWhen?: string;
+  continuationStatus?: string;
+  continuationBasis?: string;
+  confidenceBasis?: string;
+  userDecisionNeeded?: string;
 }
+
+const COUNSEL_MODE_LABELS: Record<string, string> = {
+  clarify: "先澄清",
+  research: "先调研",
+  decide: "先决策",
+  prepare: "先准备",
+  act: "直接行动",
+  verify: "先验证",
+  pause: "建议暂停",
+  stop: "建议停止",
+  escalate: "升级确认",
+};
+
+const BLOCKER_LABELS: Record<string, string> = {
+  intent: "目标不清",
+  value: "价值取舍",
+  information: "承重事实不足",
+  decision: "尚未决策",
+  condition: "行动条件不足",
+  path: "路径过大",
+  execution: "启动阻力",
+  verification: "验收不清",
+};
+
+const CONTINUATION_LABELS: Record<string, string> = {
+  new: "新判断",
+  continue: "沿用上一行动",
+  complete: "已完成待复盘",
+  reconsider: "基于变化改判",
+};
 
 export function CounselSummaryCard({
   actions,
@@ -940,8 +994,30 @@ export function CounselSummaryCard({
   confidence,
   currentStage,
   deferItems,
+  executionSteps = [],
+  keyJudgments = [],
   mainContradiction,
   recommendation,
+  riskControls = [],
+  situationAssessment,
+  whyNow,
+  decisiveCondition,
+  recommendedMode,
+  blockerType,
+  stateDelta,
+  firstMove,
+  deliverable,
+  timebox,
+  expectedStateChange,
+  mainRisk,
+  guardrail,
+  recovery,
+  observe = [],
+  reviewWhen,
+  continuationStatus,
+  continuationBasis,
+  confidenceBasis,
+  userDecisionNeeded,
 }: CounselSummary & { actions?: ReactNode; className?: string }) {
   return (
     <ContentSurface
@@ -956,10 +1032,98 @@ export function CounselSummaryCard({
         <h3>主要矛盾</h3>
         <p>{mainContradiction}</p>
       </section>
+      {(blockerType || recommendedMode || continuationStatus) && (
+        <section className="cos-counsel-summary__signals">
+          {blockerType && (
+            <StatusBadge tone="info">
+              卡点：{BLOCKER_LABELS[blockerType] ?? blockerType}
+            </StatusBadge>
+          )}
+          {recommendedMode && (
+            <StatusBadge tone="neutral">
+              节奏：{COUNSEL_MODE_LABELS[recommendedMode] ?? recommendedMode}
+            </StatusBadge>
+          )}
+          {continuationStatus && (
+            <StatusBadge tone="neutral">
+              {CONTINUATION_LABELS[continuationStatus] ?? continuationStatus}
+            </StatusBadge>
+          )}
+        </section>
+      )}
+      {stateDelta && (
+        <section>
+          <h3>状态差距</h3>
+          <p>{stateDelta}</p>
+        </section>
+      )}
+      {situationAssessment && (
+        <section>
+          <h3>态势判断</h3>
+          <p>{situationAssessment}</p>
+        </section>
+      )}
       <section className="cos-counsel-summary__recommendation">
         <h3>明确建议</h3>
         <p>{recommendation}</p>
       </section>
+      {whyNow && (
+        <section>
+          <h3>为什么现在</h3>
+          <p>{whyNow}</p>
+        </section>
+      )}
+      {decisiveCondition && (
+        <section>
+          <h3>决胜条件</h3>
+          <p>{decisiveCondition}</p>
+        </section>
+      )}
+      {(firstMove || deliverable || expectedStateChange || timebox) && (
+        <section>
+          <h3>行动命令</h3>
+          {firstMove && <p>第一步：{firstMove}</p>}
+          {deliverable && <p>产物：{deliverable}</p>}
+          {expectedStateChange && <p>预期变化：{expectedStateChange}</p>}
+          {timebox && <p>时限：{timebox}</p>}
+        </section>
+      )}
+      <SummaryList title="关键判断" items={keyJudgments} />
+      <SummaryList title="执行步骤" items={executionSteps} />
+      <SummaryList title="风险与护栏" items={riskControls} />
+      {(mainRisk || guardrail || recovery) && (
+        <section>
+          <h3>风险控制</h3>
+          {mainRisk && <p>最大风险：{mainRisk}</p>}
+          {guardrail && <p>护栏：{guardrail}</p>}
+          {recovery && <p>失败恢复：{recovery}</p>}
+        </section>
+      )}
+      <SummaryList title="观察反馈" items={observe} />
+      {reviewWhen && (
+        <section>
+          <h3>复盘时点</h3>
+          <p>{reviewWhen}</p>
+        </section>
+      )}
+      {continuationBasis && (
+        <section>
+          <h3>连续判断依据</h3>
+          <p>{continuationBasis}</p>
+        </section>
+      )}
+      {confidenceBasis && (
+        <section>
+          <h3>信心依据</h3>
+          <p>{confidenceBasis}</p>
+        </section>
+      )}
+      {userDecisionNeeded && (
+        <section className="cos-counsel-summary__recommendation">
+          <h3>需要用户确认</h3>
+          <p>{userDecisionNeeded}</p>
+        </section>
+      )}
       {confidence !== undefined && <ConfidenceMeter value={confidence} />}
       <SummaryList
         title="改判条件"

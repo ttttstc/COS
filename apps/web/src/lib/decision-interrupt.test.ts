@@ -98,6 +98,86 @@ describe("structured counsel interrupts", () => {
     );
   });
 
+  it("maps hard-gate confirmations to a resumable decision card", () => {
+    const interrupt = parseStructuredDecisionInterrupt({
+      id: "gate-1",
+      value: {
+        type: "professional_confirmation",
+        question: "是否先获得合格专业人士或责任人的确认？",
+        reason: "该议题涉及高风险边界。",
+        actions: ["confirm_boundary", "report_now"],
+      },
+    });
+
+    expect(interrupt).toMatchObject({
+      allowReportNow: true,
+      interruptId: "gate-1",
+      kind: "boundary_confirmation",
+      question: "是否先获得合格专业人士或责任人的确认？",
+      rationale: "该议题涉及高风险边界。",
+      resumeValues: ["confirm_boundary", "report_now"],
+      title: "确认专业边界",
+    });
+    expect(interrupt?.options).toEqual([
+      {
+        id: "confirm_boundary",
+        title: "确认已获得专业或责任人确认",
+      },
+    ]);
+    expect(buildStructuredInterruptResume(interrupt!, "confirm_boundary")).toEqual({
+      "gate-1": "confirm_boundary",
+    });
+  });
+
+  it.each([
+    [
+      "condition_confirmation",
+      "确认行动条件",
+      "确认关键权限或外部依赖已具备",
+    ],
+    ["value_tradeoff", "确认价值取舍", "确认本次优先保护的价值"],
+  ] as const)(
+    "maps %s without options to a boundary confirmation",
+    (type, title, optionTitle) => {
+      const interrupt = parseStructuredDecisionInterrupt({
+        value: {
+          type,
+          question: "关键条件是否已经确认？",
+          reason: "当前行动依赖一个尚未确认的边界。",
+          actions: ["confirm_boundary", "report_now"],
+        },
+      });
+
+      expect(interrupt).toMatchObject({
+        allowReportNow: true,
+        kind: "boundary_confirmation",
+        options: [{ id: "confirm_boundary", title: optionTitle }],
+        resumeValues: ["confirm_boundary", "report_now"],
+        title,
+      });
+    },
+  );
+
+  it("keeps a report-now-only hard gate resumable", () => {
+    const interrupt = parseStructuredDecisionInterrupt({
+      value: {
+        type: "condition_confirmation",
+        question: "是否具备继续条件？",
+        reason: "不能假设外部依赖已经满足。",
+        actions: ["report_now"],
+      },
+    });
+
+    expect(interrupt).toMatchObject({
+      allowReportNow: true,
+      options: [],
+      resumeValues: ["report_now"],
+    });
+    expect(buildStructuredInterruptResume(interrupt!, "report_now")).toBe(
+      "report_now",
+    );
+  });
+
   it("accepts one envelope and rejects arrays or unknown schemas", () => {
     expect(
       parseStructuredDecisionInterrupt([

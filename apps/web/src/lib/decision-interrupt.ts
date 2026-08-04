@@ -1,5 +1,8 @@
 export type StructuredInterruptKind =
-  "scope_clarification" | "value_tradeoff" | "research_approval";
+  | "scope_clarification"
+  | "value_tradeoff"
+  | "research_approval"
+  | "boundary_confirmation";
 
 export interface StructuredDecisionOption {
   cost?: string;
@@ -25,7 +28,8 @@ export interface StructuredDecisionInterrupt {
 type CounselInterruptValue =
   | ScopeClarificationInterrupt
   | ValueTradeoffInterrupt
-  | ResearchApprovalInterrupt;
+  | ResearchApprovalInterrupt
+  | BoundaryConfirmationInterrupt;
 
 interface ScopeClarificationInterrupt {
   options: Array<{
@@ -56,6 +60,17 @@ interface ResearchApprovalInterrupt {
   proposed_angles: string[];
   stop_conditions: string[];
   type: "research_approval";
+}
+
+interface BoundaryConfirmationInterrupt {
+  actions: Array<"confirm_boundary" | "report_now">;
+  question: string;
+  reason: string;
+  source:
+    | "professional_confirmation"
+    | "condition_confirmation"
+    | "value_tradeoff";
+  type: "boundary_confirmation";
 }
 
 interface InterruptEnvelope {
@@ -211,6 +226,45 @@ function parseResearchApproval(
   };
 }
 
+function parseBoundaryConfirmation(
+  value: Record<string, unknown>,
+): BoundaryConfirmationInterrupt | undefined {
+  const source = value.type;
+  if (
+    source !== "professional_confirmation" &&
+    source !== "condition_confirmation" &&
+    source !== "value_tradeoff"
+  ) {
+    return undefined;
+  }
+  const question = readString(value.question);
+  const reason = readString(value.reason);
+  if (!question || !reason || !Array.isArray(value.actions)) {
+    return undefined;
+  }
+
+  const allowedActions = new Set(["confirm_boundary", "report_now"]);
+  const actions = value.actions.filter(
+    (action): action is "confirm_boundary" | "report_now" =>
+      typeof action === "string" && allowedActions.has(action),
+  );
+  if (
+    actions.length === 0 ||
+    actions.length !== value.actions.length ||
+    new Set(actions).size !== actions.length
+  ) {
+    return undefined;
+  }
+
+  return {
+    type: "boundary_confirmation",
+    source,
+    question,
+    reason,
+    actions,
+  };
+}
+
 function parseCounselInterruptValue(
   value: unknown,
 ): CounselInterruptValue | undefined {
@@ -219,7 +273,16 @@ function parseCounselInterruptValue(
     return parseScopeClarification(value);
   }
   if (value.type === "value_tradeoff") {
+    if (!Array.isArray(value.options)) {
+      return parseBoundaryConfirmation(value);
+    }
     return parseValueTradeoff(value);
+  }
+  if (
+    value.type === "professional_confirmation" ||
+    value.type === "condition_confirmation"
+  ) {
+    return parseBoundaryConfirmation(value);
   }
   if (value.type === "research_approval") {
     return parseResearchApproval(value);
@@ -267,6 +330,38 @@ function toPresentation(
       ...(value.recommended ? { recommendedOptionId: value.recommended } : {}),
       resumeValues: [...value.options.map((option) => option.id), "report_now"],
       title: "确认议题范围",
+    };
+  }
+
+  if (value.type === "boundary_confirmation") {
+    const copy = {
+      professional_confirmation: {
+        option: "确认已获得专业或责任人确认",
+        title: "确认专业边界",
+      },
+      condition_confirmation: {
+        option: "确认关键权限或外部依赖已具备",
+        title: "确认行动条件",
+      },
+      value_tradeoff: {
+        option: "确认本次优先保护的价值",
+        title: "确认价值取舍",
+      },
+    } as const;
+    const labels = copy[value.source];
+    const options = value.actions.includes("confirm_boundary")
+      ? [{ id: "confirm_boundary", title: labels.option }]
+      : [];
+    return {
+      allowReportNow: value.actions.includes("report_now"),
+      interruptId,
+      kind: value.type,
+      options,
+      ...(protocolInterruptId ? { protocolInterruptId } : {}),
+      question: value.question,
+      rationale: value.reason,
+      resumeValues: value.actions,
+      title: labels.title,
     };
   }
 

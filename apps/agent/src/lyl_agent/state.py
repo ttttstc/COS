@@ -50,16 +50,49 @@ class CounselState(TypedDict, total=False):
     thread_id: str
     mode: CounselMode
     scope: CounselScope | None
+    request_scope: CounselScope | None
+    time_horizon: str
     raw_request: str
     normalized_question: str
+    desired_state: str
+    current_state: str
+    state_delta: str
     objectives: list[str]
     constraints: list[str]
     value_tradeoffs: list[str]
+    confirmed_facts: list[str]
+    protected_interests: list[str]
     problem_reason: str
+    blocker_type: str
+    decisive_condition: str
+    recommended_mode: str
+    candidate_state_transitions: list[dict[str, object]]
     candidate_actions: list[dict[str, object]]
     selected_action_id: str
+    selected_action: str
     action_title: str
     action_description: str
+    first_move: str
+    deliverable: str
+    done_when: list[str]
+    timebox: str | None
+    expected_state_change: str
+    not_now: list[str]
+    main_risk: str
+    guardrail: str
+    recovery: str
+    observe: list[str]
+    review_when: str
+    confidence_basis: str
+    user_decision_needed: dict[str, object] | None
+    continuation_status: str
+    continuation_basis: str
+    decision_snapshot: dict[str, object] | None
+    situation_assessment: str
+    key_judgments: list[str]
+    execution_steps: list[str]
+    risk_controls: list[str]
+    why_now: str
     completion_criteria: list[str]
     pause_or_stop: list[str]
     facts: list[str]

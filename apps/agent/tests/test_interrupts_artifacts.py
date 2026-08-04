@@ -99,6 +99,34 @@ async def test_resume_uses_same_thread_and_report_now_is_idempotent(tmp_path: Pa
 
 
 @pytest.mark.asyncio
+async def test_value_tradeoff_resume_accepts_declared_option(tmp_path: Path) -> None:
+    graph = graph_with_checkpoint(tmp_path, ["已按确定性优先形成建议"])
+    config = {"configurable": {"thread_id": "thread-value-tradeoff"}}
+    paused = await graph.ainvoke(
+        {"messages": [HumanMessage(content="速度和确定性之间如何取舍？")]},
+        config,
+        context={
+            "mode": "decide",
+            "value_tradeoffs": ["速度与确定性"],
+        },
+    )
+    pending = paused["__interrupt__"][0]
+
+    result = await graph.ainvoke(
+        Command(resume={pending.id: "certainty"}),
+        config,
+        context={
+            "mode": "decide",
+            "value_tradeoffs": ["速度与确定性"],
+        },
+    )
+
+    assert result["interrupt_decisions"] == [
+        {"type": "value_tradeoff", "selection": "certainty"}
+    ]
+
+
+@pytest.mark.asyncio
 async def test_interrupt_limit_skips_any_third_active_request() -> None:
     result = await request_decision(
         {
@@ -190,7 +218,10 @@ async def test_new_artifact_version_preserves_and_supersedes_old_version(tmp_pat
         "final",
     ]
     assert result["artifact"]["change_reason"]
-    assert result["messages"][-1].content == result["recommendation"]["summary"]
+    # The chat message is now an expanded executive brief; the recommendation
+    # summary remains the concise action used by the structured artifact.
+    assert result["recommendation"]["summary"] in result["messages"][-1].content
+    assert result["artifact"]["tabs"]["counsel"]["action_description"] == result["recommendation"]["summary"]
 
 
 def test_decision_artifact_keeps_two_options_and_normalizes_evidence() -> None:

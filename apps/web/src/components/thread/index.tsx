@@ -280,7 +280,8 @@ export function Thread() {
   };
 
   const handleSubmit = () => {
-    if (!canSubmitMessage(input, contentBlocks, isLoading)) return;
+    if (stream.interrupt || !canSubmitMessage(input, contentBlocks, isLoading))
+      return;
     setFirstTokenReceived(false);
     setArtifactVersion(undefined);
     const newHumanMessage: Message = {
@@ -464,7 +465,10 @@ export function Thread() {
       <IssueComposer
         mode={mode}
         value={input}
-        disabled={Boolean(stream.interrupt)}
+        placeholder={
+          stream.interrupt ? "可先输入补充说明，完成当前裁决后发送" : undefined
+        }
+        submitDisabled={Boolean(stream.interrupt)}
         streaming={isLoading}
         canSubmit={canSubmitMessage(input, contentBlocks, isLoading)}
         onChange={setInput}
