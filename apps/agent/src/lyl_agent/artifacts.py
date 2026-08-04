@@ -1,6 +1,7 @@
 """Typed counsel artifacts and version transitions."""
 
 from copy import deepcopy
+from datetime import datetime, timezone
 import json
 from typing import Annotated, Literal
 
@@ -14,12 +15,43 @@ ArtifactStatus = Literal["draft", "final", "superseded"]
 
 class NextActionCard(BaseModel):
     scope: Literal["local", "global"] = "local"
+    request_scope: Literal["local", "global"] | None = None
+    time_horizon: str = "custom"
+    desired_state: str = ""
+    current_state: str = ""
+    state_delta: str = ""
+    confirmed_facts: list[str] = Field(default_factory=list)
+    protected_interests: list[str] = Field(default_factory=list)
     current_stage: str
     main_contradiction: str
+    blocker_type: str = "path"
+    decisive_condition: str = ""
+    recommended_mode: str = "act"
+    judgment: str = ""
     action_title: str
     action_description: str
+    selected_action: str = ""
+    first_move: str = ""
+    deliverable: str = ""
+    done_when: list[str] = Field(default_factory=list)
+    timebox: str | None = None
+    expected_state_change: str = ""
+    not_now: list[str] = Field(default_factory=list)
+    main_risk: str = ""
+    guardrail: str = ""
+    recovery: str = ""
+    observe: list[str] = Field(default_factory=list)
+    review_when: str = ""
+    confidence_basis: str = ""
+    user_decision_needed: dict[str, object] | None = None
+    continuation_status: str = "new"
+    continuation_basis: str = ""
+    situation_assessment: str = ""
+    key_judgments: list[str] = Field(default_factory=list)
+    execution_steps: list[str] = Field(default_factory=list)
+    risk_controls: list[str] = Field(default_factory=list)
     completion_criteria: list[str]
-    why_now: str
+    why_now: str = ""
     pause_or_stop: list[str]
     assumptions: list[str]
     confidence: int = Field(ge=0, le=100)
@@ -94,6 +126,7 @@ class CounselArtifact(BaseModel):
     version: int = Field(ge=1)
     status: ArtifactStatus
     change_reason: str | None = None
+    decision_snapshot: dict[str, object] | None = None
     tabs: ArtifactTabs
 
 
@@ -317,12 +350,43 @@ def _draft_card(state: CounselState) -> CounselCard:
         )
     return NextActionCard(
         scope=state.get("scope") if state.get("scope") in {"local", "global"} else "local",
+        request_scope=state.get("request_scope") if state.get("request_scope") in {"local", "global"} else state.get("scope"),
+        time_horizon=state.get("time_horizon") or "custom",
+        desired_state=state.get("desired_state") or "把当前议题推进到可验证的下一状态。",
+        current_state=state.get("current_state") or "已有议题输入，正在形成可执行判断。",
+        state_delta=state.get("state_delta") or "从问题描述转为可执行判断。",
+        confirmed_facts=state.get("confirmed_facts") or state.get("facts", []),
+        protected_interests=state.get("protected_interests", []),
         current_stage="形成建议",
         main_contradiction=contradiction,
+        blocker_type=state.get("blocker_type") or "path",
+        decisive_condition=state.get("decisive_condition") or "完成一个可验证的下一状态。",
+        recommended_mode=state.get("recommended_mode") or "act",
+        judgment=state.get("situation_assessment") or "正在形成判断。",
         action_title=state.get("action_title") or "先完成一个最小可逆动作",
         action_description=state.get("action_description") or "参谋正在整理当前议题。",
+        selected_action=state.get("selected_action") or state.get("action_title") or "先完成一个最小可逆动作",
+        first_move=state.get("first_move") or state.get("action_description") or "完成第一步可观察动作",
+        deliverable=state.get("deliverable") or "一份可检查的记录",
+        done_when=state.get("done_when") or state.get("completion_criteria") or ["完成一次最小动作并记录结果"],
+        timebox=state.get("timebox"),
+        expected_state_change=state.get("expected_state_change") or "从当前卡点推进到可验证反馈。",
+        not_now=state.get("not_now") or state.get("pause_or_stop") or ["暂停同时推进多个方向。"],
+        main_risk=state.get("main_risk") or "行动投入超过当前证据能支持的范围。",
+        guardrail=state.get("guardrail") or "设置时间与投入上限。",
+        recovery=state.get("recovery") or "记录失败原因并缩小下一轮动作。",
+        observe=state.get("observe") or ["完成标准是否达成"],
+        review_when=state.get("review_when") or "完成主行动后复盘",
+        confidence_basis=state.get("confidence_basis") or "基于现有上下文和完成标准。",
+        user_decision_needed=state.get("user_decision_needed"),
+        continuation_status=state.get("continuation_status") or "new",
+        continuation_basis=state.get("continuation_basis") or "本轮使用 ask 决策协议完成判断。",
+        situation_assessment=state.get("situation_assessment") or "当前判断基于现有上下文，先处理最影响结果的矛盾。",
+        key_judgments=state.get("key_judgments") or ["先用真实反馈校准判断，再扩大投入。"],
+        execution_steps=state.get("execution_steps") or ["明确本轮动作", "完成最小验证", "记录结果并复盘"],
+        risk_controls=state.get("risk_controls") or ["控制投入上限，验证不支持时及时停止。"],
         completion_criteria=state.get("completion_criteria") or ["完成一次最小动作并记录结果"],
-        why_now="先用低成本行动获得真实反馈。",
+        why_now=state.get("why_now") or "先用低成本行动获得真实反馈。",
         pause_or_stop=state.get("pause_or_stop") or ["暂停同时推进多个方向。"],
         assumptions=state.get("assumptions") or ["当前建议基于现有上下文，未执行外部调研。"],
         confidence=confidence,
@@ -345,6 +409,7 @@ def build_draft_artifact(state: CounselState) -> CounselArtifact:
             if state.get("artifact_versions")
             else None
         ),
+        decision_snapshot=state.get("decision_snapshot"),
         tabs=ArtifactTabs(
             counsel=_draft_card(state),
             evidence=_artifact_evidence(state.get("evidence", [])),
@@ -366,9 +431,37 @@ def finalize_artifact(
     if isinstance(card, NextActionCard):
         if state.get("scope") in {"local", "global"}:
             card.scope = state["scope"]
+        if state.get("request_scope") in {"local", "global"}:
+            card.request_scope = state["request_scope"]
+        card.time_horizon = state.get("time_horizon") or card.time_horizon
+        card.desired_state = state.get("desired_state") or card.desired_state
+        card.current_state = state.get("current_state") or card.current_state
+        card.state_delta = state.get("state_delta") or card.state_delta
+        card.confirmed_facts = state.get("confirmed_facts") or card.confirmed_facts
+        card.protected_interests = state.get("protected_interests") or card.protected_interests
         card.current_stage = state.get("current_stage") or card.current_stage
         card.main_contradiction = state.get("main_contradiction") or card.main_contradiction
+        card.blocker_type = state.get("blocker_type") or card.blocker_type
+        card.decisive_condition = state.get("decisive_condition") or card.decisive_condition
+        card.recommended_mode = state.get("recommended_mode") or card.recommended_mode
+        card.judgment = state.get("situation_assessment") or card.judgment
         card.completion_criteria = state.get("completion_criteria") or card.completion_criteria
+        card.selected_action = state.get("selected_action") or card.selected_action
+        card.first_move = state.get("first_move") or card.first_move
+        card.deliverable = state.get("deliverable") or card.deliverable
+        card.done_when = state.get("done_when") or card.done_when or card.completion_criteria
+        card.timebox = state.get("timebox") or card.timebox
+        card.expected_state_change = state.get("expected_state_change") or card.expected_state_change
+        card.not_now = state.get("not_now") or card.not_now or card.pause_or_stop
+        card.main_risk = state.get("main_risk") or card.main_risk
+        card.guardrail = state.get("guardrail") or card.guardrail
+        card.recovery = state.get("recovery") or card.recovery
+        card.observe = state.get("observe") or card.observe
+        card.review_when = state.get("review_when") or card.review_when
+        card.confidence_basis = state.get("confidence_basis") or card.confidence_basis
+        card.user_decision_needed = state.get("user_decision_needed") or card.user_decision_needed
+        card.continuation_status = state.get("continuation_status") or card.continuation_status
+        card.continuation_basis = state.get("continuation_basis") or card.continuation_basis
         card.pause_or_stop = state.get("pause_or_stop") or card.pause_or_stop
         card.assumptions = state.get("assumptions") or card.assumptions
         if state.get("confidence") is not None:
@@ -376,8 +469,15 @@ def finalize_artifact(
         card.need_research = state.get("need_research", card.need_research)
         card.reconsider_when = state.get("reconsider_when") or card.reconsider_when
         card.action_title = state.get("action_title") or recommendation
-        card.action_description = recommendation
-        card.why_now = "这是当前信息下最值得优先推进的方向。"
+        # The chat transcript may contain the expanded executive brief. Keep
+        # the artifact's primary recommendation as the concise action so the
+        # structured panel does not duplicate every report section.
+        card.action_description = state.get("action_description") or card.action_description
+        card.situation_assessment = state.get("situation_assessment") or card.situation_assessment
+        card.key_judgments = state.get("key_judgments") or card.key_judgments
+        card.execution_steps = state.get("execution_steps") or card.execution_steps
+        card.risk_controls = state.get("risk_controls") or card.risk_controls
+        card.why_now = state.get("why_now") or card.why_now or "这是当前信息下最值得优先推进的方向。"
     elif isinstance(card, DecisionCard):
         card.decision_question = state.get("decision_question") or card.decision_question
         card.objectives = state.get("objectives") or card.objectives
@@ -399,7 +499,27 @@ def finalize_artifact(
         card.suggested_rule = recommendation
         card.next_practice = recommendation
 
-    final = draft.model_copy(update={"status": "final"}, deep=True)
+    if isinstance(card, NextActionCard):
+        final_snapshot = {
+            "subject": state.get("normalized_question") or state.get("raw_request") or draft.title,
+            "desired_state": state.get("desired_state") or "",
+            "current_stage": card.current_stage,
+            "main_contradiction": card.main_contradiction,
+            "decisive_condition": state.get("decisive_condition") or "",
+            "action_title": card.action_title,
+            "current_action": card.action_description,
+            "done_when": card.done_when or card.completion_criteria,
+            "committed_at": state.get("committed_at") or datetime.now(timezone.utc).isoformat(),
+            "review_trigger": state.get("reconsider_when") or card.reconsider_when,
+            "not_now": state.get("not_now") or card.pause_or_stop,
+            "continuation_status": state.get("continuation_status") or "new",
+        }
+        final = draft.model_copy(
+            update={"status": "final", "decision_snapshot": final_snapshot},
+            deep=True,
+        )
+    else:
+        final = draft.model_copy(update={"status": "final"}, deep=True)
     versions: list[dict[str, object]] = []
     for item in state.get("artifact_versions", []):
         if not isinstance(item, dict):

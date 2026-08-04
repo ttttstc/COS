@@ -83,6 +83,10 @@ def test_fallback_action_exists_for_each_problem_reason(reason: str) -> None:
     assert updates["candidate_actions"]
     assert updates["selected_action_id"]
     assert updates["completion_criteria"]
+    assert updates["situation_assessment"]
+    assert updates["key_judgments"]
+    assert updates["execution_steps"]
+    assert updates["risk_controls"]
     assert display
 
 
@@ -105,6 +109,49 @@ def test_model_0_to_10_scores_are_normalized_to_the_five_point_rubric() -> None:
     candidate = updates["candidate_actions"][0]
     assert candidate["impact"] == 4
     assert candidate["uncertainty_reduction"] == 3
+
+
+def test_probability_confidence_is_normalized_to_card_percentage() -> None:
+    updates, _ = normalize_ask(
+        {"raw_request": "下一步做什么？"},
+        {"confidence": 0.8},
+        "",
+    )
+    assert updates["confidence"] == 80
+
+
+def test_ask_normalizer_applies_protocol_fields_and_hard_gate() -> None:
+    updates, display = normalize_ask(
+        {
+            "raw_request": "6天新生儿应该吃什么奶粉",
+            "problem_reason": "no_clear_blocker",
+        },
+        {
+            "action_title": "直接买某品牌",
+            "action_description": "马上购买并开始使用",
+            "first_move": "下单",
+            "deliverable": "购买记录",
+            "done_when": ["买到奶粉"],
+            "expected_state_change": "开始喂养",
+            "candidate_actions": [
+                {
+                    "id": "unsafe",
+                    "title": "直接买某品牌",
+                    "description": "马上购买并开始使用",
+                    "impact": 5,
+                    "reversibility": 5,
+                }
+            ],
+        },
+        "",
+    )
+    assert updates["recommended_mode"] == "escalate"
+    assert updates["user_decision_needed"]
+    assert updates["action_title"] == "先完成专业或责任边界确认"
+    assert updates["first_move"]
+    assert updates["deliverable"]
+    assert updates["done_when"]
+    assert "风险与护栏" in display
 
 
 def test_partial_decide_payload_fallbacks_follow_selected_option() -> None:
@@ -156,6 +203,22 @@ async def test_ask_skill_covers_eight_realistic_scenarios(
     assert result["problem_reason"] == reason
     assert card.action_title
     assert card.action_description
+    assert card.situation_assessment
+    assert card.key_judgments
+    assert card.execution_steps
+    assert card.risk_controls
+    assert card.decisive_condition
+    assert card.recommended_mode
+    assert card.first_move
+    assert card.deliverable
+    assert card.done_when
+    assert card.expected_state_change
+    assert card.not_now
+    assert card.main_risk
+    assert card.guardrail
+    assert card.recovery
+    assert card.observe
+    assert card.review_when
     assert card.completion_criteria
     assert card.pause_or_stop
     assert 0 <= card.confidence <= 100
@@ -256,11 +319,69 @@ async def test_configured_model_covers_issue_8_and_9_scenarios(
     if mode == "ask":
         assert isinstance(artifact.tabs.counsel, NextActionCard)
         assert artifact.tabs.counsel.action_description
+        assert artifact.tabs.counsel.key_judgments
+        assert artifact.tabs.counsel.execution_steps
+        assert artifact.tabs.counsel.risk_controls
         assert artifact.tabs.counsel.completion_criteria
     else:
         assert isinstance(artifact.tabs.counsel, DecisionCard)
         assert 2 <= len(artifact.tabs.counsel.options) <= 4
         assert artifact.tabs.counsel.recommended_option_id
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("prompt", "blocker", "mode"),
+    [
+        ("项目目标明确，但任务太大无法启动，下一步做什么？", "path", "prepare"),
+        ("产品和销售都想推进，我需要判断全局优先级", "decision", "decide"),
+        ("缺少一个会改变方向的关键事实，下一步怎么办？", "information", "research"),
+        ("信息已经够了，但我迟迟没有拍板", "decision", "decide"),
+        ("时间和预算发生取舍，这次应该优先保护什么？", "value", "decide"),
+        ("外部依赖和权限尚未具备，下一步做什么？", "condition", "clarify"),
+        ("我已经知道该做什么，但一直拖延启动", "execution", "act"),
+        ("工作做完了一部分，但没有验收标准", "verification", "verify"),
+        ("当前最佳选择是暂停，不想继续扩大投入", "execution", "pause"),
+        ("这个目标已经不值得继续，应该停止", "execution", "stop"),
+        ("6天新生儿应该吃什么奶粉", "path", "escalate"),
+        ("同一个项目我已经完成上一轮动作，反馈不支持原假设，重新判断下一步", "execution", "act"),
+    ],
+)
+async def test_configured_model_covers_issue_32_decision_protocol(
+    tmp_path: Path,
+    prompt: str,
+    blocker: str,
+    mode: str,
+) -> None:
+    if os.getenv("LYL_LIVE_TEST") != "1":
+        pytest.skip("Set LYL_LIVE_TEST=1 to run configured model scenarios")
+    graph = build_graph(
+        memory_repository=MemoryRepository(tmp_path / "issue32-live-memory.sqlite3"),
+        checkpointer=InMemorySaver(),
+    )
+    result = await run_to_final(
+        graph,
+        prompt,
+        "ask",
+        f"issue32-live-{abs(hash(prompt))}",
+    )
+    card = CounselArtifact.model_validate(result["artifact"]).tabs.counsel
+    assert isinstance(card, NextActionCard)
+    assert card.blocker_type == blocker
+    assert card.recommended_mode == mode
+    assert card.decisive_condition
+    assert card.action_title
+    assert card.first_move
+    assert card.deliverable
+    assert card.done_when
+    assert card.expected_state_change
+    assert card.not_now
+    assert card.main_risk
+    assert card.guardrail
+    assert card.recovery
+    assert card.observe
+    assert card.reconsider_when
 
 
 @pytest.mark.asyncio
@@ -286,6 +407,11 @@ async def test_structured_model_output_populates_both_skill_cards(tmp_path: Path
         "selected_action_id": "talk",
         "action_title": "访谈一位用户",
         "action_description": "今天完成一次用户访谈",
+        "situation_assessment": "验证拖延的根因是缺少真实反馈",
+        "key_judgments": ["先获得真实反馈，再扩大投入"],
+        "execution_steps": ["联系用户", "完成访谈", "记录结论"],
+        "risk_controls": ["控制在今天完成"],
+        "why_now": "今天即可获得关键反馈",
         "completion_criteria": ["完成一次访谈"],
         "pause_or_stop": ["暂停扩张功能"],
         "assumptions": ["可以联系用户"],
@@ -301,9 +427,12 @@ async def test_structured_model_output_populates_both_skill_cards(tmp_path: Path
     ask_card = CounselArtifact.model_validate(result["artifact"]).tabs.counsel
     assert isinstance(ask_card, NextActionCard)
     assert ask_card.action_title == "访谈一位用户"
+    assert ask_card.situation_assessment == "验证拖延的根因是缺少真实反馈"
+    assert ask_card.execution_steps == ["联系用户", "完成访谈", "记录结论"]
     assert ask_card.completion_criteria == ["完成一次访谈"]
     assert ask_card.confidence == 82
-    assert result["messages"][-1].content == ask_card.action_description
+    assert "明确建议：访谈一位用户" in result["messages"][-1].content
+    assert "执行步骤：" in result["messages"][-1].content
 
     decide_payload = {
         "decision_question": "如何用最低成本验证用户需求？",

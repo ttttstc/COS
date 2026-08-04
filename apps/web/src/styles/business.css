@@ -790,6 +790,12 @@
   box-shadow: inset 2px 0 0 var(--lyl-green-500);
 }
 
+.cos-counsel-summary__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--lyl-space-2);
+}
+
 .cos-counsel-details__option-heading {
   display: flex;
   align-items: center;

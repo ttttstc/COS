@@ -130,6 +130,11 @@ const AGENT_BUILDER_AUTH_SCHEME = "langsmith-api-key";
 export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
+  const [threadId] = useQueryState("threadId");
+  const [showHome, setShowHome] = useQueryState(
+    "home",
+    parseAsBoolean.withDefault(true),
+  );
   // Get environment variables
   const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
   const envAssistantId: string | undefined =
@@ -188,6 +193,8 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
     void setSettingsOpen(false);
   };
 
+  const showConnectionHome = !threadId && showHome;
+
   const saveConnectionSettings = (values: ConnectionSettingsValues) => {
     void setApiUrl(values.apiUrl);
     setApiKey(values.apiKey);
@@ -220,12 +227,21 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
       <StreamSettingsContext.Provider value={{ openSettings }}>
         <ConnectionHome
           onEnter={() => {
+            void setShowHome(false);
             void setApiUrl(apiUrl || envApiUrl || DEFAULT_API_URL);
             void setAssistantId(
               assistantId || envAssistantId || DEFAULT_ASSISTANT_ID,
             );
           }}
         />
+      </StreamSettingsContext.Provider>
+    );
+  }
+
+  if (showConnectionHome) {
+    return (
+      <StreamSettingsContext.Provider value={{ openSettings }}>
+        <ConnectionHome onEnter={() => void setShowHome(false)} />
       </StreamSettingsContext.Provider>
     );
   }

@@ -170,10 +170,37 @@ Agent 生成 Memory Proposal
 ```python
 class NextActionCard(BaseModel):
     scope: Literal["local", "global"]
+    request_scope: Literal["local", "global"] | None
+    time_horizon: str
+    desired_state: str
+    current_state: str
+    state_delta: str
+    confirmed_facts: list[str]
+    protected_interests: list[str]
     current_stage: str
     main_contradiction: str
+    blocker_type: Literal["intent", "value", "information", "decision", "condition", "path", "execution", "verification"]
+    decisive_condition: str
+    recommended_mode: Literal["clarify", "research", "decide", "prepare", "act", "verify", "pause", "stop", "escalate"]
+    judgment: str
     action_title: str
     action_description: str
+    selected_action: str
+    first_move: str
+    deliverable: str
+    done_when: list[str]
+    timebox: str | None
+    expected_state_change: str
+    not_now: list[str]
+    main_risk: str
+    guardrail: str
+    recovery: str
+    observe: list[str]
+    review_when: str
+    confidence_basis: str
+    user_decision_needed: dict | None
+    continuation_status: Literal["new", "continue", "complete", "reconsider"]
+    continuation_basis: str
     completion_criteria: list[str]
     why_now: str
     pause_or_stop: list[str]

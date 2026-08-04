@@ -35,6 +35,8 @@ class CounselState(TypedDict, total=False):
     thread_id: str
     mode: Literal["ask", "decide", "research", "diagnose", "discuss"]
     scope: Literal["local", "global"] | None
+    request_scope: Literal["local", "global"] | None
+    time_horizon: str
 
     # Problem
     raw_request: str
@@ -42,6 +44,31 @@ class CounselState(TypedDict, total=False):
     objectives: list[str]
     constraints: list[str]
     value_tradeoffs: list[str]
+    desired_state: str
+    current_state: str
+    state_delta: str
+    confirmed_facts: list[str]
+    protected_interests: list[str]
+    blocker_type: Literal["intent", "value", "information", "decision", "condition", "path", "execution", "verification"]
+    decisive_condition: str
+    recommended_mode: Literal["clarify", "research", "decide", "prepare", "act", "verify", "pause", "stop", "escalate"]
+    candidate_state_transitions: list[dict]
+    selected_action: str
+    first_move: str
+    deliverable: str
+    done_when: list[str]
+    timebox: str | None
+    expected_state_change: str
+    not_now: list[str]
+    main_risk: str
+    guardrail: str
+    recovery: str
+    observe: list[str]
+    review_when: str
+    confidence_basis: str
+    continuation_status: Literal["new", "continue", "complete", "reconsider"]
+    continuation_basis: str
+    decision_snapshot: dict | None
 
     # Context
     selected_memory_ids: list[str]
@@ -118,7 +145,23 @@ propose_memory_update
 END
 ```
 
-### 14.1 避免过重的规则
+### 14.1 ask-lyl 五阶段决策协议
+
+`ask-lyl` 对外仍是单一 Skill，内部按以下顺序完成确定性检查：
+
+```text
+Understand → Diagnose → Select Mode → Recommend → Control
+```
+
+- Understand：恢复范围、时间窗口、目标状态、当前状态、事实、约束和受保护利益；
+- Diagnose：将主要卡点归入 intent / value / information / decision / condition / path / execution / verification；
+- Select Mode：选择 clarify / research / decide / prepare / act / verify / pause / stop / escalate；
+- Recommend：硬门控后最多比较三个候选，只输出一个通过承诺测试的主行动；
+- Control：补齐第一步、产物、完成标准、时限、预期变化、暂缓事项、风险护栏、恢复办法、观察反馈和改判条件。
+
+安全、权限、不可逆损失、重大价值取舍和专业边界优先于任何候选分数。候选分数只保留作调试信息，最终选择使用硬门控、决策节奏、层级排序和承诺测试。
+
+### 14.2 避免过重的规则
 
 - `ask` 默认不进入研究；
 - `decide` 仅在关键事实缺失时研究；
@@ -175,21 +218,11 @@ class AskLYLInput(BaseModel):
 9. 指出暂停事项；
 10. 输出置信度和改判条件。
 
-### 候选行动评分
+### 候选行动选择
 
-不实现复杂机器学习排序，使用可解释启发式：
+候选项最多三个，覆盖直接推进、降低承重不确定性、解除阻塞或降低风险三类。候选可保留 0–5 分调试指标，但最终不使用加权总分决定行动；必须先通过硬门控，再按是否创造决胜条件、是否可恢复、用户当前是否能开始、完成后是否可判断结果进行层级比较。
 
-```text
-Action Score =
-  0.30 × 对主要矛盾的影响
-+ 0.25 × 降低关键不确定性的能力
-+ 0.20 × 对长期目标的贡献
-+ 0.10 × 可执行性
-+ 0.10 × 可逆性
-- 0.05 × 机会成本
-```
-
-每项 0–5 分。评分只用于内部比较，最终输出必须由主 Agent复核。
+用户再次询问同一议题时，先读取 `decision_snapshot`，区分原行动仍应继续、已完成待复盘、触发改判或目标已变化，不得无理由随机生成另一套主行动。
 
 ### 输出
 

@@ -181,6 +181,33 @@ function ArtifactSummary({ artifact }: ArtifactCardProps) {
       confidence={artifact.confidence}
       changeConditions={artifact.changeConditions}
       deferItems={artifact.deferItems}
+      situationAssessment={text(artifact.counsel, "situation_assessment")}
+      keyJudgments={strings(artifact.counsel, "key_judgments")}
+      executionSteps={strings(artifact.counsel, "execution_steps")}
+      riskControls={strings(artifact.counsel, "risk_controls")}
+      whyNow={text(artifact.counsel, "why_now")}
+      decisiveCondition={text(artifact.counsel, "decisive_condition")}
+      recommendedMode={text(artifact.counsel, "recommended_mode")}
+      blockerType={text(artifact.counsel, "blocker_type")}
+      stateDelta={text(artifact.counsel, "state_delta")}
+      firstMove={text(artifact.counsel, "first_move")}
+      deliverable={text(artifact.counsel, "deliverable")}
+      timebox={text(artifact.counsel, "timebox")}
+      expectedStateChange={text(artifact.counsel, "expected_state_change")}
+      mainRisk={text(artifact.counsel, "main_risk")}
+      guardrail={text(artifact.counsel, "guardrail")}
+      recovery={text(artifact.counsel, "recovery")}
+      observe={strings(artifact.counsel, "observe")}
+      reviewWhen={text(artifact.counsel, "review_when")}
+      continuationStatus={text(artifact.counsel, "continuation_status")}
+      continuationBasis={text(artifact.counsel, "continuation_basis")}
+      confidenceBasis={text(artifact.counsel, "confidence_basis")}
+      userDecisionNeeded={
+        text(
+          artifact.counsel.user_decision_needed as CounselRecord | undefined,
+          "question",
+        )
+      }
       actions={<ArtifactDetails artifact={artifact} />}
     />
   );

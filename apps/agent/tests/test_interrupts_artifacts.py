@@ -190,7 +190,10 @@ async def test_new_artifact_version_preserves_and_supersedes_old_version(tmp_pat
         "final",
     ]
     assert result["artifact"]["change_reason"]
-    assert result["messages"][-1].content == result["recommendation"]["summary"]
+    # The chat message is now an expanded executive brief; the recommendation
+    # summary remains the concise action used by the structured artifact.
+    assert result["recommendation"]["summary"] in result["messages"][-1].content
+    assert result["artifact"]["tabs"]["counsel"]["action_description"] == result["recommendation"]["summary"]
 
 
 def test_decision_artifact_keeps_two_options_and_normalizes_evidence() -> None:

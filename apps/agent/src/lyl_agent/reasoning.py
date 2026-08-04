@@ -15,6 +15,11 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from lyl_agent.artifacts import DecisionOption
+from lyl_agent.decision_machine import (
+    commitment_complete,
+    profile_for,
+    rank_action_keys,
+)
 from lyl_agent.state import CounselState
 
 ProblemReason = Literal[
@@ -37,6 +42,13 @@ class ActionCandidate(BaseModel):
     executability: int = Field(default=3, ge=0, le=5)
     reversibility: int = Field(default=3, ge=0, le=5)
     opportunity_cost: int = Field(default=2, ge=0, le=5)
+    expected_state_change: str = ""
+    first_move: str = ""
+    deliverable: str = ""
+    done_when: list[str] = Field(default_factory=list)
+    timebox: str | None = None
+    main_risk: str = ""
+    guardrail: str = ""
 
 
 VALID_PROBLEM_REASONS = {
@@ -88,7 +100,8 @@ def infer_goal(question: str) -> str | None:
 def _bounded(value: object, default: int) -> int:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return default
-    return max(0, min(100, round(value)))
+    normalized = value * 100 if 0 <= value <= 1 else value
+    return max(0, min(100, round(normalized)))
 
 
 def _score_0_to_5(value: object, default: int = 3) -> int:
@@ -119,6 +132,58 @@ def _safe_display(response_text: str, fallback: str, payload: dict[str, object] 
     return response_text.strip()
 
 
+def _ask_report_text(
+    *,
+    title: str,
+    description: str,
+    situation: str,
+    judgments: list[str],
+    steps: list[str],
+    risks: list[str],
+    completion: list[str],
+    why_now: str,
+    decisive_condition: str,
+    first_move: str,
+    deliverable: str,
+    expected_state_change: str,
+    not_now: list[str],
+    reconsider_when: list[str],
+    recovery: str,
+    observe: list[str],
+    main_risk: str,
+    guardrail: str,
+) -> str:
+    """Render a concise executive brief for the chat transcript.
+
+    The full structured report remains in the artifact; this keeps the chat
+    message readable while making the recommendation auditable at a glance.
+    """
+
+    def bullets(items: list[str]) -> str:
+        return "\n".join(f"- {item}" for item in items)
+
+    risk_lines = [*risks]
+    if main_risk:
+        risk_lines.insert(0, f"最大风险：{main_risk}")
+    if guardrail:
+        risk_lines.append(f"护栏：{guardrail}")
+    if recovery:
+        risk_lines.append(f"失败恢复：{recovery}")
+    return (
+        f"参谋判断：{situation}\n\n"
+        f"关键判断：\n{bullets(judgments)}\n\n"
+        f"明确建议：{title}\n{description}\n\n"
+        f"为什么现在：{why_now}\n\n"
+        f"决胜条件：{decisive_condition}\n\n"
+        f"第一步：{first_move}\n产物：{deliverable}\n预期变化：{expected_state_change}\n\n"
+        f"执行步骤：\n{bullets(steps)}\n\n"
+        f"完成标准：\n{bullets(completion)}\n\n"
+        f"暂缓事项：\n{bullets(not_now)}\n\n"
+        f"风险与护栏：\n{bullets(risk_lines)}\n\n"
+        f"反馈与改判：\n观察：\n{bullets(observe)}\n改判条件：\n{bullets(reconsider_when)}"
+    )
+
+
 def infer_scope(question: str, explicit: object = None) -> Literal["local", "global"]:
     if explicit in {"local", "global"}:
         return explicit
@@ -129,6 +194,22 @@ def infer_scope(question: str, explicit: object = None) -> Literal["local", "glo
         if any(word in question for word in ("长期", "战略", "全局", "整体", "年度", "方向"))
         else "local"
     )
+
+
+_STAGE_LABELS = {
+    "pre_interview_prep": "访谈前准备",
+    "validate_assumption": "验证关键假设",
+    "reduce_uncertainty": "降低关键不确定性",
+    "clarify_goal": "明确目标",
+    "choose_criterion": "确定筛选标准",
+    "start_small": "启动最小行动",
+    "form_recommendation": "形成建议",
+}
+
+
+def _stage_label(value: object) -> str | None:
+    stage = _text(value)
+    return _STAGE_LABELS.get(stage, stage) if stage else None
 
 
 def classify_problem(question: str, mode: str) -> ProblemReason:
@@ -303,6 +384,85 @@ def _fallback_action(reason: ProblemReason) -> ActionCandidate:
     return candidates[reason]
 
 
+def _gate_action(profile: object) -> ActionCandidate:
+    mode = getattr(profile, "recommended_mode", "escalate")
+    title_by_mode = {
+        "escalate": "先完成专业或责任边界确认",
+        "clarify": "先确认关键条件是否具备",
+        "decide": "先确认本次优先保护的价值",
+    }
+    description_by_mode = {
+        "escalate": "不要直接执行高风险动作；先把事实、边界和责任人确认清楚，再决定是否继续。",
+        "clarify": "先确认权限、资源或外部依赖，不把尚未确认的条件当作已具备。",
+        "decide": "先让用户明确价值排序与可接受代价，再比较具体路径。",
+    }
+    title = title_by_mode.get(mode, title_by_mode["escalate"])
+    description = description_by_mode.get(mode, description_by_mode["escalate"])
+    return ActionCandidate(
+        id=f"gate-{mode}",
+        title=title,
+        description=description,
+        completion_criteria=["完成必要的专业、权限或价值边界确认"],
+        impact=5,
+        uncertainty_reduction=5,
+        goal_contribution=5,
+        executability=4,
+        reversibility=5,
+        opportunity_cost=1,
+        expected_state_change="从未经确认的高风险状态转为具备明确边界的可决策状态",
+        first_move="列出必须确认的事实、责任人和不能承受的后果",
+        deliverable="一份边界确认记录",
+        done_when=["确认事实、责任人和下一步边界"],
+        timebox="在采取不可逆动作前完成",
+        main_risk="把通用建议误当成针对个体的专业结论",
+        guardrail="未完成确认前不执行不可逆或可能造成伤害的动作",
+    )
+
+
+def _mode_action(mode: str) -> ActionCandidate | None:
+    if mode == "pause":
+        return ActionCandidate(
+            id="pause-and-review",
+            title="暂停新增投入并做一次复盘",
+            description="先冻结新增承诺与扩张动作，整理已有结果和继续投入的最低条件。",
+            completion_criteria=["列出继续、调整、停止各自的触发条件"],
+            impact=4,
+            uncertainty_reduction=4,
+            goal_contribution=4,
+            executability=5,
+            reversibility=5,
+            opportunity_cost=1,
+            expected_state_change="从盲目推进转为有边界的等待或复盘",
+            first_move="暂停下一笔新增投入，并写下暂停原因",
+            deliverable="一页复盘与恢复条件",
+            done_when=["明确继续、调整或停止的触发条件"],
+            timebox="本周内复盘一次",
+            main_risk="暂停变成无限期拖延",
+            guardrail="必须写出明确的复盘时间和恢复条件",
+        )
+    if mode == "stop":
+        return ActionCandidate(
+            id="stop-with-closure",
+            title="停止扩张并完成收口",
+            description="停止新增投入，保留必要记录和恢复路径，避免沉没成本继续扩大。",
+            completion_criteria=["完成收口记录并关闭新增投入"],
+            impact=4,
+            uncertainty_reduction=3,
+            goal_contribution=4,
+            executability=5,
+            reversibility=4,
+            opportunity_cost=1,
+            expected_state_change="从持续消耗转为可解释、可恢复的结束状态",
+            first_move="列出必须保留的资产、责任和收口动作",
+            deliverable="收口清单与恢复条件",
+            done_when=["完成收口并记录停止依据"],
+            timebox="在下一笔投入前完成",
+            main_risk="停止过快导致重要资产或关系损失",
+            guardrail="先保留证据、交接和可恢复路径，再关闭投入",
+        )
+    return None
+
+
 def was_reported_now(state: CounselState) -> bool:
     """Return whether this persisted counsel state contains a report-now choice."""
 
@@ -331,6 +491,11 @@ def normalize_ask(
     response_text: str,
 ) -> tuple[dict[str, object], str]:
     data = payload or {}
+    question = state.get("raw_request", "")
+    blocker = state.get("blocker_type")
+    profile = profile_for(question, blocker if blocker in {
+        "intent", "value", "information", "decision", "condition", "path", "execution", "verification"
+    } else None)
     reason = data.get("problem_reason")
     if reason not in VALID_PROBLEM_REASONS:
         reason = state.get("problem_reason") or classify_problem(
@@ -360,44 +525,175 @@ def normalize_ask(
                     continue
                 if candidate.id not in {existing.id for existing in candidates}:
                     candidates.append(candidate)
-    if not candidates:
+    mode_action = _mode_action(profile.recommended_mode)
+    if profile.hard_gate:
+        candidates = [_gate_action(profile)]
+    elif mode_action:
+        candidates = [mode_action]
+    elif not candidates:
         candidates = [fallback]
-    candidates = candidates[:4]
+    candidates = candidates[:3]
     selected_id = data.get("selected_action_id")
     if not isinstance(selected_id, str) or selected_id not in {item.id for item in candidates}:
-        selected_id = max(candidates, key=_candidate_score).id
+        selected_id = max(
+            candidates,
+            key=lambda item: rank_action_keys(item.model_dump(mode="json")),
+        ).id
     selected = next(item for item in candidates if item.id == selected_id)
-    completion = _strings(data.get("completion_criteria")) or selected.completion_criteria or fallback.completion_criteria
+    continuation_status = state.get("continuation_status") or "new"
+    previous_snapshot = state.get("decision_snapshot")
+    if continuation_status == "continue" and isinstance(previous_snapshot, dict):
+        previous_title = _text(previous_snapshot.get("action_title"))
+        previous_action = _text(previous_snapshot.get("current_action"))
+        if previous_title:
+            data = {**data, "action_title": previous_title}
+        if previous_action:
+            data = {**data, "action_description": previous_action}
+    if profile.hard_gate:
+        data = {
+            **data,
+            "action_title": selected.title,
+            "action_description": selected.description,
+        }
     description = _text(data.get("action_description")) or selected.description
     title = _text(data.get("action_title")) or selected.title
-    display_text = description if payload else _safe_display(response_text, description, payload)
+    contradiction = _text(data.get("main_contradiction")) \
+        or state.get("main_contradiction") \
+        or contradiction_for(reason, "ask")
+    situation = _text(data.get("situation_assessment")) or (
+        f"当前的主要矛盾是“{contradiction}”，应先处理最能改变判断的环节。"
+    )
+    judgments = _strings(data.get("key_judgments")) or [
+        f"“{title}”比继续扩大讨论更能获得可验证反馈。",
+        "先验证关键假设，再决定是否增加投入。",
+    ]
+    done_when = _strings(data.get("done_when")) or selected.done_when
+    completion = _strings(data.get("completion_criteria")) or done_when or selected.completion_criteria or fallback.completion_criteria
+    steps = _strings(data.get("execution_steps")) or [
+        f"先完成：{description}",
+        *[f"记录结果：{criterion}" for criterion in completion[:2]],
+    ]
+    risks = _strings(data.get("risk_controls")) or [
+        "设置时间与投入上限；结果不支持时暂停扩张并重新判断。",
+    ]
+    why_now = _text(data.get("why_now")) or "这是当前信息下最值得优先推进、且失败成本可控的动作。"
+    decisive_condition = (
+        _text(data.get("decisive_condition"))
+        or state.get("decisive_condition")
+        or profile.decisive_condition
+    )
+    first_move = _text(data.get("first_move")) or selected.first_move or description
+    deliverable = _text(data.get("deliverable")) or selected.deliverable or f"一份可检查的记录：{completion[0]}"
+    timebox = _text(data.get("timebox")) or selected.timebox or ("今天" if state.get("time_horizon") == "today" else "本轮行动内")
+    expected_state_change = _text(data.get("expected_state_change")) or selected.expected_state_change or profile.state_delta
+    not_now = _strings(data.get("not_now")) or _strings(state.get("not_now")) or _strings(data.get("pause_or_stop")) or ["暂停同时推进多个方向，直到主行动完成。"]
+    main_risk = _text(data.get("main_risk")) or selected.main_risk or "行动投入超过当前证据能支持的范围。"
+    guardrail = _text(data.get("guardrail")) or selected.guardrail or "设置时间与投入上限，结果不支持时暂停扩张。"
+    recovery = _text(data.get("recovery")) or "记录失败原因，回到决胜条件并缩小下一轮动作。"
+    observe = _strings(data.get("observe")) or ["完成标准是否达成", "关键假设是否得到支持"]
+    review_when = _text(data.get("review_when")) or "完成主行动后立即复盘"
+    reconsider_when = _strings(data.get("reconsider_when")) or state.get("reconsider_when") or ["完成最小测试后结果不支持当前方向"]
+    confidence_basis = _text(data.get("confidence_basis")) or state.get("confidence_basis") or "基于当前上下文和明确的完成标准。"
+    user_decision_needed = (
+        data.get("user_decision_needed")
+        if isinstance(data.get("user_decision_needed"), dict)
+        else state.get("user_decision_needed")
+        or (profile.hard_gate.user_decision_needed if profile.hard_gate else None)
+    )
+    commitment_passed = commitment_complete(
+        first_move=first_move,
+        deliverable=deliverable,
+        done_when=completion,
+        expected_state_change=expected_state_change,
+    )
+    if not commitment_passed:
+        first_move = first_move or description
+        deliverable = deliverable or "一份可检查的记录"
+        expected_state_change = expected_state_change or profile.state_delta
+    plain_response = _safe_display(response_text, "", payload) if not payload else ""
+    report_description = plain_response or description
+    display_text = _ask_report_text(
+        title=title,
+        description=report_description,
+        situation=situation,
+        judgments=judgments,
+        steps=steps,
+        risks=risks,
+        completion=completion,
+        why_now=why_now,
+        decisive_condition=decisive_condition,
+        first_move=first_move,
+        deliverable=deliverable,
+        expected_state_change=expected_state_change,
+        not_now=not_now,
+        reconsider_when=reconsider_when,
+        recovery=recovery,
+        observe=observe,
+        main_risk=main_risk,
+        guardrail=guardrail,
+    )
     reported_now = was_reported_now(state)
     state_confidence = state.get("confidence")
+    need_research = False if reported_now or profile.hard_gate else (
+        bool(state.get("need_research"))
+        or bool(data.get("need_research"))
+        or profile.recommended_mode == "research"
+    )
+    candidate_transitions = [
+        {
+            **item.model_dump(mode="json"),
+            "score": _candidate_score(item),
+            "lexicographic_rank": list(rank_action_keys(item.model_dump(mode="json"))),
+            "commitment_test_passed": item.id == selected_id and commitment_passed,
+        }
+        for item in candidates
+    ]
     updates: dict[str, object] = {
-        "scope": infer_scope(state.get("raw_request", ""), data.get("scope") or state.get("scope")),
+        "scope": infer_scope(question, data.get("scope") or state.get("scope")),
+        "request_scope": infer_scope(question, data.get("request_scope") or state.get("scope")),
+        "time_horizon": _text(data.get("time_horizon")) or state.get("time_horizon") or "custom",
+        "desired_state": _text(data.get("desired_state")) or state.get("desired_state") or "把当前议题推进到可验证的下一状态。",
+        "current_state": _text(data.get("current_state")) or state.get("current_state") or "已有议题输入，正在形成可执行判断。",
+        "state_delta": _text(data.get("state_delta")) or state.get("state_delta") or profile.state_delta,
+        "confirmed_facts": _strings(data.get("confirmed_facts")) or _strings(state.get("confirmed_facts")),
+        "protected_interests": _strings(data.get("protected_interests")) or _strings(state.get("protected_interests")),
         "problem_reason": reason,
-        "candidate_actions": [
-            {**item.model_dump(mode="json"), "score": _candidate_score(item)}
-            for item in candidates
-        ],
+        "blocker_type": profile.blocker_type,
+        "decisive_condition": decisive_condition,
+        "recommended_mode": profile.recommended_mode,
+        "candidate_state_transitions": candidate_transitions,
+        "candidate_actions": candidate_transitions,
         "selected_action_id": selected_id,
+        "selected_action": title,
         "action_title": title,
         "action_description": description,
+        "first_move": first_move,
+        "deliverable": deliverable,
+        "done_when": completion,
+        "timebox": timebox,
+        "expected_state_change": expected_state_change,
+        "not_now": not_now,
+        "main_risk": main_risk,
+        "guardrail": guardrail,
+        "recovery": recovery,
+        "observe": observe,
+        "review_when": review_when,
+        "confidence_basis": confidence_basis,
+        "user_decision_needed": user_decision_needed,
+        "continuation_status": continuation_status,
+        "continuation_basis": state.get("continuation_basis") or "本轮使用 ask 决策协议完成判断。",
+        "situation_assessment": situation,
+        "key_judgments": judgments,
+        "execution_steps": steps,
+        "risk_controls": risks,
+        "why_now": why_now,
         "completion_criteria": completion,
-        "pause_or_stop": _strings(data.get("pause_or_stop")) or ["暂停同时推进多个方向，直到主行动完成。"],
+        "pause_or_stop": not_now,
         "assumptions": _strings(data.get("assumptions")) or ["当前建议基于现有上下文，未执行外部调研。"],
-        "need_research": False
-        if reported_now
-        else bool(state.get("need_research"))
-        or bool(data.get("need_research"))
-        or reason == "information_insufficient",
-        "reconsider_when": _strings(data.get("reconsider_when"))
-        or state.get("reconsider_when")
-        or ["完成最小测试后结果不支持当前方向"],
-        "main_contradiction": _text(data.get("main_contradiction"))
-        or state.get("main_contradiction")
-        or contradiction_for(reason, "ask"),
-        "current_stage": _text(data.get("current_stage")) or "执行最小验证",
+        "need_research": need_research,
+        "reconsider_when": reconsider_when,
+        "main_contradiction": contradiction,
+        "current_stage": _stage_label(data.get("current_stage")) or "执行最小验证",
         "confidence": _bounded(
             data.get("confidence"),
             state_confidence if isinstance(state_confidence, (int, float)) else 60,

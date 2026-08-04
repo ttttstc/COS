@@ -16,10 +16,35 @@ const artifactValue = {
   tabs: {
     counsel: {
       scope: "local",
+      request_scope: "local",
+      time_horizon: "today",
+      state_delta: "从模糊问题到可验证反馈",
+      blocker_type: "information",
+      decisive_condition: "完成一次真实访谈",
+      recommended_mode: "act",
       current_stage: "形成建议",
       main_contradiction: "验证不足",
       action_title: "访谈用户",
       action_description: "先访谈五位真实用户",
+      first_move: "联系第一位用户",
+      deliverable: "五次访谈记录",
+      done_when: ["完成五次访谈"],
+      timebox: "本周内",
+      expected_state_change: "获得真实需求信号",
+      not_now: ["暂停扩展功能"],
+      main_risk: "样本偏差",
+      guardrail: "不把单一样本当结论",
+      recovery: "扩大样本后重判",
+      observe: ["是否出现共同问题"],
+      review_when: "完成访谈后复盘",
+      confidence_basis: "已有候选用户且动作可逆",
+      continuation_status: "new",
+      continuation_basis: "本轮为新判断",
+      situation_assessment: "当前缺少真实用户反馈，继续扩展功能会放大不确定性。",
+      key_judgments: ["先获得行为反馈，再决定是否扩大投入"],
+      execution_steps: ["联系用户", "完成访谈", "记录共同问题"],
+      risk_controls: ["控制在本周内完成，结果不支持就暂停扩张"],
+      why_now: "今天即可获得第一轮信号。",
       completion_criteria: ["完成五次访谈并记录共同问题"],
       pause_or_stop: ["暂停扩展功能"],
       confidence: 74,
@@ -53,6 +78,15 @@ describe("structured counsel artifact panels", () => {
     expect(screen.getByText("先访谈五位真实用户")).toBeInTheDocument();
     expect(screen.getByText("74%")).toBeInTheDocument();
     expect(screen.getByText("局部下一步")).toBeInTheDocument();
+    expect(screen.getByText("卡点：承重事实不足")).toBeInTheDocument();
+    expect(screen.getByText("节奏：直接行动")).toBeInTheDocument();
+    expect(screen.getByText("决胜条件")).toBeInTheDocument();
+    expect(screen.getByText(/联系第一位用户/)).toBeInTheDocument();
+    expect(screen.getByText(/样本偏差/)).toBeInTheDocument();
+    expect(screen.getByText("态势判断")).toBeInTheDocument();
+    expect(screen.getByText("先获得行为反馈，再决定是否扩大投入")).toBeInTheDocument();
+    expect(screen.getByText("联系用户")).toBeInTheDocument();
+    expect(screen.getByText("控制在本周内完成，结果不支持就暂停扩张")).toBeInTheDocument();
     expect(screen.getByText("完成五次访谈并记录共同问题")).toBeInTheDocument();
     expect(screen.getByText(/改判原因：关键约束发生变化/)).toBeInTheDocument();
   });
