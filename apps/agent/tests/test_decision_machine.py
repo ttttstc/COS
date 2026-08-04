@@ -89,6 +89,45 @@ def test_recommendation_keeps_at_most_three_candidates() -> None:
     assert len(updates["candidate_actions"]) == 3
 
 
+def test_model_selected_id_cannot_bypass_deterministic_candidate_ranking() -> None:
+    candidates = [
+        {
+            "id": "safe",
+            "title": "先做可逆验证",
+            "description": "用小范围动作验证关键假设。",
+            "goal_contribution": 5,
+            "reversibility": 5,
+            "uncertainty_reduction": 4,
+            "executability": 4,
+            "impact": 4,
+            "opportunity_cost": 1,
+        },
+        {
+            "id": "risky",
+            "title": "直接扩大投入",
+            "description": "立即扩大范围并承担更高成本。",
+            "goal_contribution": 4,
+            "reversibility": 1,
+            "uncertainty_reduction": 5,
+            "executability": 5,
+            "impact": 5,
+            "opportunity_cost": 4,
+        },
+    ]
+    updates, _ = normalize_ask(
+        {"raw_request": "有两个方向，下一步怎么做？"},
+        {
+            "candidate_actions": candidates,
+            "selected_action_id": "risky",
+            "action_title": "直接扩大投入",
+            "action_description": "立即扩大范围并承担更高成本。",
+        },
+        "",
+    )
+    assert updates["selected_action_id"] == "safe"
+    assert updates["action_title"] == "先做可逆验证"
+
+
 def test_continuation_reuses_previous_decision_until_new_evidence() -> None:
     snapshot = {
         "subject": "今天先访谈一个用户，下一步做什么",
@@ -101,6 +140,10 @@ def test_continuation_reuses_previous_decision_until_new_evidence() -> None:
     status, _ = continuation_for("今天先访谈一个用户，已经完成了", snapshot)
     assert status == "complete"
     status, _ = continuation_for("今天先访谈一个用户，但访谈失败了", snapshot)
+    assert status == "reconsider"
+    status, _ = continuation_for("做完了", snapshot)
+    assert status == "complete"
+    status, _ = continuation_for("反馈是没有效果", snapshot)
     assert status == "reconsider"
 
 

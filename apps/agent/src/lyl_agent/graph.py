@@ -479,7 +479,15 @@ def _decision_interrupt(state: CounselState) -> dict[str, object] | None:
 
 
 def _allowed_resume_values(payload: dict[str, object]) -> set[str]:
-    if payload.get("type") in {"research_approval", "user_decision_needed", "professional_confirmation", "condition_confirmation", "value_tradeoff"}:
+    if payload.get("type") in {
+        "research_approval",
+        "user_decision_needed",
+        "professional_confirmation",
+        "condition_confirmation",
+    } or (
+        payload.get("type") == "value_tradeoff"
+        and isinstance(payload.get("actions"), list)
+    ):
         actions = payload.get("actions")
         return {item for item in actions if isinstance(item, str)} if isinstance(actions, list) else set()
     options = payload.get("options")

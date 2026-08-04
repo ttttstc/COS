@@ -154,6 +154,35 @@ def test_ask_normalizer_applies_protocol_fields_and_hard_gate() -> None:
     assert "风险与护栏" in display
 
 
+@pytest.mark.parametrize(
+    ("continuation_status", "expected_title"),
+    [
+        ("complete", "复盘已完成行动并决定是否继续"),
+        ("reconsider", "基于新反馈重新判断下一步"),
+    ],
+)
+def test_ask_normalizer_has_explicit_continuation_actions(
+    continuation_status: str,
+    expected_title: str,
+) -> None:
+    updates, _ = normalize_ask(
+        {
+            "raw_request": "做完了",
+            "continuation_status": continuation_status,
+            "decision_snapshot": {
+                "action_title": "完成用户访谈",
+                "current_action": "完成一次用户访谈并记录结果",
+            },
+        },
+        None,
+        "",
+    )
+    assert updates["action_title"] == expected_title
+    assert updates["first_move"]
+    assert updates["deliverable"]
+    assert updates["done_when"]
+
+
 def test_partial_decide_payload_fallbacks_follow_selected_option() -> None:
     updates, display = normalize_decide(
         {"raw_request": "该选哪个方案？"},

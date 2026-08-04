@@ -219,6 +219,11 @@ def continuation_for(
     subject = snapshot.get("subject")
     if not isinstance(subject, str) or not subject.strip():
         return "new", "上一轮没有保存可比对的议题主题。"
+    normalized = question.lower()
+    if _has(normalized, ("失败", "不行", "没效果", "没有效果", "改变了", "新约束", "重新判断")):
+        return "reconsider", "用户报告了结果、失败或新约束，需要基于变化改判。"
+    if _has(normalized, ("已完成", "做完了", "完成了", "结果是", "反馈是", "做完")):
+        return "complete", "用户报告原行动已有结果，应先核对结果再决定后续。"
     similarity = SequenceMatcher(
         None,
         "".join(subject.lower().split()),
@@ -226,11 +231,6 @@ def continuation_for(
     ).ratio()
     if similarity < 0.45 and subject not in question and question not in subject:
         return "new", "本轮议题与上一轮主题差异较大。"
-    normalized = question.lower()
-    if _has(normalized, ("已完成", "做完了", "完成了", "结果是", "反馈是")):
-        return "complete", "用户报告原行动已有结果，应先核对结果再决定后续。"
-    if _has(normalized, ("失败", "不行", "没效果", "改变了", "新约束", "重新判断")):
-        return "reconsider", "用户报告了结果、失败或新约束，需要基于变化改判。"
     return "continue", "议题主题延续，上一轮主行动仍应作为当前判断基线。"
 
 

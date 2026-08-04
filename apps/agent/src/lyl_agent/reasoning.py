@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from lyl_agent.artifacts import DecisionOption
 from lyl_agent.decision_machine import (
+    DecisionProfile,
     commitment_complete,
     profile_for,
     rank_action_keys,
@@ -306,18 +307,6 @@ def default_decision_options(
     return options[:4]
 
 
-def _candidate_score(candidate: ActionCandidate) -> float:
-    return round(
-        0.30 * candidate.impact
-        + 0.25 * candidate.uncertainty_reduction
-        + 0.20 * candidate.goal_contribution
-        + 0.10 * candidate.executability
-        + 0.10 * candidate.reversibility
-        - 0.05 * candidate.opportunity_cost,
-        2,
-    )
-
-
 def _fallback_action(reason: ProblemReason) -> ActionCandidate:
     candidates = {
         "goal_unclear": ActionCandidate(
@@ -384,8 +373,8 @@ def _fallback_action(reason: ProblemReason) -> ActionCandidate:
     return candidates[reason]
 
 
-def _gate_action(profile: object) -> ActionCandidate:
-    mode = getattr(profile, "recommended_mode", "escalate")
+def _gate_action(profile: DecisionProfile) -> ActionCandidate:
+    mode = profile.recommended_mode
     title_by_mode = {
         "escalate": "先完成专业或责任边界确认",
         "clarify": "先确认关键条件是否具备",
@@ -463,6 +452,58 @@ def _mode_action(mode: str) -> ActionCandidate | None:
     return None
 
 
+def _continuation_action(
+    status: str,
+    snapshot: object,
+) -> ActionCandidate | None:
+    if status not in {"complete", "reconsider"}:
+        return None
+    previous_title = (
+        _text(snapshot.get("action_title"))
+        if isinstance(snapshot, dict)
+        else ""
+    ) or "上一轮主行动"
+    if status == "complete":
+        return ActionCandidate(
+            id="review-completed-action",
+            title="复盘已完成行动并决定是否继续",
+            description=f"先核对“{previous_title}”的实际结果与预期差异，再决定继续、调整或停止。",
+            completion_criteria=["记录实际结果与关键偏差", "明确继续、调整或停止"],
+            impact=4,
+            uncertainty_reduction=5,
+            goal_contribution=5,
+            executability=5,
+            reversibility=5,
+            opportunity_cost=1,
+            expected_state_change="从已执行转为有证据支持的后续选择",
+            first_move="写下实际结果、预期结果和两者的最大差异",
+            deliverable="一页结果复盘与后续选择",
+            done_when=["完成结果对照", "明确继续、调整或停止"],
+            timebox="今天完成",
+            main_risk="把完成动作误当成目标已经达成",
+            guardrail="先记录事实和结果，再决定是否增加投入",
+        )
+    return ActionCandidate(
+        id="reconsider-with-feedback",
+        title="基于新反馈重新判断下一步",
+        description=f"保留“{previous_title}”作为对照，明确新反馈改变了哪个假设，再重排可逆行动。",
+        completion_criteria=["写清新反馈改变的假设", "形成一个新的可逆主行动"],
+        impact=4,
+        uncertainty_reduction=5,
+        goal_contribution=5,
+        executability=4,
+        reversibility=5,
+        opportunity_cost=1,
+        expected_state_change="从原假设受挑战转为基于新证据的行动选择",
+        first_move="列出新反馈支持、反驳和未解决的各一条事实",
+        deliverable="一页假设更新与新行动判断",
+        done_when=["明确被改变的假设", "选出一个可逆的新主行动"],
+        timebox="本轮复盘内完成",
+        main_risk="只因一次反例就完全推翻原方向",
+        guardrail="区分事实、解释和待验证假设，不扩大结论",
+    )
+
+
 def was_reported_now(state: CounselState) -> bool:
     """Return whether this persisted counsel state contains a report-now choice."""
 
@@ -502,6 +543,12 @@ def normalize_ask(
             state.get("raw_request", ""), "ask"
         )
     fallback = _fallback_action(reason)
+    continuation_status = state.get("continuation_status") or "new"
+    previous_snapshot = state.get("decision_snapshot")
+    continuation_action = _continuation_action(
+        continuation_status,
+        previous_snapshot,
+    )
     candidates: list[ActionCandidate] = []
     raw_candidates = data.get("candidate_actions")
     if isinstance(raw_candidates, list):
@@ -528,20 +575,44 @@ def normalize_ask(
     mode_action = _mode_action(profile.recommended_mode)
     if profile.hard_gate:
         candidates = [_gate_action(profile)]
+    elif continuation_action:
+        candidates = [continuation_action]
     elif mode_action:
         candidates = [mode_action]
     elif not candidates:
         candidates = [fallback]
     candidates = candidates[:3]
-    selected_id = data.get("selected_action_id")
-    if not isinstance(selected_id, str) or selected_id not in {item.id for item in candidates}:
-        selected_id = max(
-            candidates,
-            key=lambda item: rank_action_keys(item.model_dump(mode="json")),
-        ).id
+    # The model can describe and enrich candidates, but deterministic protocol
+    # ranking owns the final choice. A valid model-selected id must not bypass
+    # the hard-gate/lexicographic ordering contract.
+    selected_id = max(
+        candidates,
+        key=lambda item: rank_action_keys(item.model_dump(mode="json")),
+    ).id
     selected = next(item for item in candidates if item.id == selected_id)
-    continuation_status = state.get("continuation_status") or "new"
-    previous_snapshot = state.get("decision_snapshot")
+    # Keep the user-visible recommendation and its commitment fields aligned
+    # with the deterministically selected candidate, rather than trusting a
+    # second, free-form top-level model selection.
+    data = {
+        **data,
+        "action_title": selected.title,
+        "action_description": selected.description,
+    }
+    if selected.completion_criteria:
+        data["completion_criteria"] = selected.completion_criteria
+    for field in (
+        "first_move",
+        "deliverable",
+        "timebox",
+        "expected_state_change",
+        "main_risk",
+        "guardrail",
+    ):
+        value = getattr(selected, field)
+        if value:
+            data[field] = value
+    if selected.done_when:
+        data["done_when"] = selected.done_when
     if continuation_status == "continue" and isinstance(previous_snapshot, dict):
         previous_title = _text(previous_snapshot.get("action_title"))
         previous_action = _text(previous_snapshot.get("current_action"))
@@ -549,6 +620,19 @@ def normalize_ask(
             data = {**data, "action_title": previous_title}
         if previous_action:
             data = {**data, "action_description": previous_action}
+    if continuation_action:
+        data = {
+            **data,
+            "action_title": selected.title,
+            "action_description": selected.description,
+            "first_move": selected.first_move,
+            "deliverable": selected.deliverable,
+            "done_when": selected.done_when,
+            "timebox": selected.timebox,
+            "expected_state_change": selected.expected_state_change,
+            "main_risk": selected.main_risk,
+            "guardrail": selected.guardrail,
+        }
     if profile.hard_gate:
         data = {
             **data,
@@ -642,7 +726,6 @@ def normalize_ask(
     candidate_transitions = [
         {
             **item.model_dump(mode="json"),
-            "score": _candidate_score(item),
             "lexicographic_rank": list(rank_action_keys(item.model_dump(mode="json"))),
             "commitment_test_passed": item.id == selected_id and commitment_passed,
         }
