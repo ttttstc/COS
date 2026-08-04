@@ -4,6 +4,7 @@ from typing import Annotated, Literal, Protocol, TypedDict
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
+from lyl_agent.contracts import CounselSurfaceMode
 
 CounselMode = Literal["ask", "decide", "research", "diagnose", "discuss"]
 CounselScope = Literal["local", "global"]
@@ -25,6 +26,7 @@ class CounselContext(TypedDict, total=False):
     """Run Context supplied by the client without becoming persisted input."""
 
     mode: CounselMode
+    core_mode: CounselSurfaceMode
     scope: CounselScope
     user_id: str
     thread_id: str
@@ -81,6 +83,11 @@ class CounselState(TypedDict, total=False):
     main_risk: str
     guardrail: str
     recovery: str
+    not_doing_cost: str
+    resource_cost: str
+    side_effects: list[str]
+    recovery_path: str
+    preserves_optionality: bool
     observe: list[str]
     review_when: str
     confidence_basis: str
@@ -108,6 +115,7 @@ class CounselState(TypedDict, total=False):
     research_plan: dict[str, object] | None
     evidence: list[dict[str, object]]
     unresolved_unknowns: list[str]
+    counsel_session: dict[str, object] | None
     main_contradiction: str | None
     options: list[dict[str, object]]
     opposition_view: list[str]

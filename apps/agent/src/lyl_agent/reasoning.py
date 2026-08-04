@@ -50,6 +50,12 @@ class ActionCandidate(BaseModel):
     timebox: str | None = None
     main_risk: str = ""
     guardrail: str = ""
+    why_now: str = ""
+    not_doing_cost: str = ""
+    resource_cost: str = ""
+    side_effects: list[str] = Field(default_factory=list)
+    recovery_path: str = ""
+    preserves_optionality: bool = True
 
 
 VALID_PROBLEM_REASONS = {
@@ -131,6 +137,29 @@ def _safe_display(response_text: str, fallback: str, payload: dict[str, object] 
     if response_text.lstrip().startswith(("{", "[", "```")) or '"decision_question"' in response_text:
         return fallback
     return response_text.strip()
+
+
+def _complete_candidate(candidate: ActionCandidate) -> ActionCandidate:
+    """Ensure every candidate carries the V2 control dimensions.
+
+    These are protocol defaults, not claims about external facts.  A model can
+    replace them with more specific values, but a missing field must never
+    make a candidate look more complete than it is.
+    """
+
+    return candidate.model_copy(
+        update={
+            "why_now": candidate.why_now or "当前阶段优先获得可验证反馈。",
+            "not_doing_cost": candidate.not_doing_cost or "继续等待会延后关键反馈。",
+            "resource_cost": candidate.resource_cost
+            or (f"投入不超过{candidate.timebox}" if candidate.timebox else "投入本轮有限时间和注意力。"),
+            "side_effects": candidate.side_effects or ["占用本轮有限的时间和注意力"],
+            "recovery_path": candidate.recovery_path
+            or "记录失败原因，回到决胜条件并缩小下一轮动作。",
+            "preserves_optionality": candidate.preserves_optionality
+            and candidate.reversibility >= 3,
+        }
+    )
 
 
 def _ask_report_text(
@@ -556,6 +585,16 @@ def normalize_ask(
             if isinstance(item, dict):
                 try:
                     candidate_data = dict(item)
+                    if "not_doing_cost" not in candidate_data:
+                        value = candidate_data.get("opportunity_cost_reason") or candidate_data.get("cost_of_not_doing")
+                        if value is not None:
+                            candidate_data["not_doing_cost"] = value
+                    if "resource_cost" not in candidate_data and candidate_data.get("cost") is not None:
+                        candidate_data["resource_cost"] = candidate_data["cost"]
+                    if "recovery_path" not in candidate_data and candidate_data.get("recovery") is not None:
+                        candidate_data["recovery_path"] = candidate_data["recovery"]
+                    if "preserves_optionality" not in candidate_data and candidate_data.get("preserves_choice") is not None:
+                        candidate_data["preserves_optionality"] = candidate_data["preserves_choice"]
                     for field in (
                         "impact",
                         "uncertainty_reduction",
@@ -567,7 +606,9 @@ def normalize_ask(
                         candidate_data[field] = _score_0_to_5(
                             candidate_data.get(field),
                         )
-                    candidate = ActionCandidate.model_validate(candidate_data)
+                    candidate = _complete_candidate(
+                        ActionCandidate.model_validate(candidate_data)
+                    )
                 except Exception:
                     continue
                 if candidate.id not in {existing.id for existing in candidates}:
@@ -581,7 +622,7 @@ def normalize_ask(
         candidates = [mode_action]
     elif not candidates:
         candidates = [fallback]
-    candidates = candidates[:3]
+    candidates = [_complete_candidate(item) for item in candidates[:3]]
     # The model can describe and enrich candidates, but deterministic protocol
     # ranking owns the final choice. A valid model-selected id must not bypass
     # the hard-gate/lexicographic ordering contract.
@@ -607,12 +648,18 @@ def normalize_ask(
         "expected_state_change",
         "main_risk",
         "guardrail",
+        "why_now",
+        "not_doing_cost",
+        "resource_cost",
+        "recovery_path",
     ):
         value = getattr(selected, field)
         if value:
             data[field] = value
     if selected.done_when:
         data["done_when"] = selected.done_when
+    data["side_effects"] = selected.side_effects
+    data["preserves_optionality"] = selected.preserves_optionality
     if continuation_status == "continue" and isinstance(previous_snapshot, dict):
         previous_title = _text(previous_snapshot.get("action_title"))
         previous_action = _text(previous_snapshot.get("current_action"))
@@ -660,7 +707,7 @@ def normalize_ask(
     risks = _strings(data.get("risk_controls")) or [
         "设置时间与投入上限；结果不支持时暂停扩张并重新判断。",
     ]
-    why_now = _text(data.get("why_now")) or "这是当前信息下最值得优先推进、且失败成本可控的动作。"
+    why_now = _text(data.get("why_now")) or selected.why_now or "这是当前信息下最值得优先推进、且失败成本可控的动作。"
     decisive_condition = (
         _text(data.get("decisive_condition"))
         or state.get("decisive_condition")
@@ -674,6 +721,13 @@ def normalize_ask(
     main_risk = _text(data.get("main_risk")) or selected.main_risk or "行动投入超过当前证据能支持的范围。"
     guardrail = _text(data.get("guardrail")) or selected.guardrail or "设置时间与投入上限，结果不支持时暂停扩张。"
     recovery = _text(data.get("recovery")) or "记录失败原因，回到决胜条件并缩小下一轮动作。"
+    not_doing_cost = _text(data.get("not_doing_cost")) or selected.not_doing_cost or "继续等待会延后关键反馈。"
+    resource_cost = _text(data.get("resource_cost")) or selected.resource_cost or "投入本轮有限时间和注意力。"
+    side_effects = _strings(data.get("side_effects")) or selected.side_effects
+    recovery_path = _text(data.get("recovery_path")) or selected.recovery_path or recovery
+    preserves_optionality = bool(
+        data.get("preserves_optionality", selected.preserves_optionality)
+    ) and selected.reversibility >= 3
     observe = _strings(data.get("observe")) or ["完成标准是否达成", "关键假设是否得到支持"]
     review_when = _text(data.get("review_when")) or "完成主行动后立即复盘"
     reconsider_when = _strings(data.get("reconsider_when")) or state.get("reconsider_when") or ["完成最小测试后结果不支持当前方向"]
@@ -759,6 +813,11 @@ def normalize_ask(
         "main_risk": main_risk,
         "guardrail": guardrail,
         "recovery": recovery,
+        "not_doing_cost": not_doing_cost,
+        "resource_cost": resource_cost,
+        "side_effects": side_effects,
+        "recovery_path": recovery_path,
+        "preserves_optionality": preserves_optionality,
         "observe": observe,
         "review_when": review_when,
         "confidence_basis": confidence_basis,

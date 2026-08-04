@@ -91,6 +91,40 @@ describe("counsel state adapter", () => {
     ]);
   });
 
+  it("parses the #34 counsel session envelope without trusting malformed values", () => {
+    const state = parseCounselState({
+      counsel_session: {
+        issue_id: "thread-1",
+        subject: "当前议题",
+        user_intent: "我该先做什么",
+        desired_outcome: "完成最小验证",
+        active_mode: "next_action",
+        previous_modes: ["discuss", "invalid"],
+        current_stage: "synthesize_counsel",
+        status: "ready",
+        facts: [{ content: "已确认" }],
+        assumptions: [],
+        unknowns: [{ content: "待验证" }],
+        user_commitments: [],
+        pending_interrupt: null,
+        review_trigger: { review_when: "今天" },
+      },
+    });
+
+    expect(state.counsel_session).toMatchObject({
+      issue_id: "thread-1",
+      active_mode: "next_action",
+      previous_modes: ["discuss"],
+      status: "ready",
+      unknowns: [{ content: "待验证" }],
+    });
+    expect(
+      parseCounselState({ counsel_session: { active_mode: "invalid" } }),
+    ).toEqual({
+      messages: [],
+    });
+  });
+
   it("maps the four fixed material tabs and their empty states", () => {
     const tabs = toMaterialTabs({
       current_stage: "synthesize",

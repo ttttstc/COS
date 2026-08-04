@@ -151,6 +151,21 @@ async def test_self_answerable_request_does_not_interrupt(tmp_path: Path) -> Non
 
 
 @pytest.mark.asyncio
+async def test_graph_emits_compatible_counsel_session_contract(tmp_path: Path) -> None:
+    graph = graph_with_checkpoint(tmp_path, ["先完成一个最小验证"])
+    result = await graph.ainvoke(
+        {"messages": [HumanMessage(content="下一步做什么？")]},
+        {"configurable": {"thread_id": "thread-contract"}},
+        context={"mode": "ask"},
+    )
+
+    session = result["counsel_session"]
+    assert session["active_mode"] == "next_action"
+    assert session["status"] == "ready"
+    assert session["active_artifact_id"] == "next_action:v1"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("prompt", ["北京人口是多少？", "我之前的定价判断是什么？"])
 async def test_other_self_answerable_requests_do_not_interrupt(
     tmp_path: Path, prompt: str
@@ -194,6 +209,7 @@ async def test_artifact_streams_draft_then_freezes_final(tmp_path: Path) -> None
     assert draft["status"] == "draft"
     assert final["status"] == "final"
     assert final["version"] == draft["version"] == 1
+    assert final["tabs"]["counsel"]["protocol_v2"]["diagnosis"]["main_contradiction"]
     CounselArtifact.model_validate(final)
 
 
@@ -217,6 +233,9 @@ async def test_new_artifact_version_preserves_and_supersedes_old_version(tmp_pat
         "superseded",
         "final",
     ]
+    assert result["artifact"]["supersedes"] == ["next_action:v1"]
+    assert result["artifact_versions"][0]["superseded_by"] == ["next_action:v2"]
+    assert result["decision_snapshot"]["superseded_decisions"] == ["next_action:v1"]
     assert result["artifact"]["change_reason"]
     # The chat message is now an expanded executive brief; the recommendation
     # summary remains the concise action used by the structured artifact.

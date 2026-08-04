@@ -1,5 +1,10 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import type { UIMessage } from "@langchain/langgraph-sdk/react-ui";
+import {
+  isCounselSurfaceMode,
+  type CounselSession,
+  type CounselSessionStatus,
+} from "./counsel-contract";
 
 export type CounselRecord = Record<string, unknown>;
 
@@ -29,6 +34,7 @@ export interface CounselState {
   historical_patterns?: CounselRecord[];
   artifact?: CounselRecord;
   artifact_versions?: CounselRecord[];
+  counsel_session?: CounselSession;
   error?: string;
 }
 
@@ -108,6 +114,72 @@ function readRecordArray(value: unknown): CounselRecord[] | undefined {
   return value.filter(isRecord);
 }
 
+function readCounselSession(value: unknown): CounselSession | undefined {
+  if (!isRecord(value)) return undefined;
+  const issueId = readString(value.issue_id);
+  const subject = readString(value.subject);
+  const userIntent = readString(value.user_intent);
+  const activeMode = value.active_mode;
+  const status = value.status;
+  if (
+    !issueId ||
+    !subject ||
+    userIntent === undefined ||
+    !isCounselSurfaceMode(activeMode) ||
+    (status !== "active" &&
+      status !== "awaiting_user" &&
+      status !== "researching" &&
+      status !== "ready" &&
+      status !== "completed" &&
+      status !== "paused" &&
+      status !== "superseded")
+  ) {
+    return undefined;
+  }
+
+  const previousModes = Array.isArray(value.previous_modes)
+    ? value.previous_modes.filter(isCounselSurfaceMode)
+    : [];
+  const records = (key: string) => readRecordArray(value[key]) ?? [];
+  const nullableRecord = (key: string) =>
+    value[key] === null || value[key] === undefined || isRecord(value[key])
+      ? ((value[key] as CounselRecord | null | undefined) ?? null)
+      : null;
+  const currentStage = readString(value.current_stage) ?? "intake";
+  const desiredOutcome = readString(value.desired_outcome) ?? "";
+
+  return {
+    issue_id: issueId,
+    subject,
+    user_intent: userIntent,
+    desired_outcome: desiredOutcome,
+    active_mode: activeMode,
+    previous_modes: previousModes,
+    current_stage: currentStage,
+    status: status as CounselSessionStatus,
+    context_snapshot_id:
+      typeof value.context_snapshot_id === "string"
+        ? value.context_snapshot_id
+        : null,
+    active_artifact_id:
+      typeof value.active_artifact_id === "string"
+        ? value.active_artifact_id
+        : null,
+    active_decision_record_id:
+      typeof value.active_decision_record_id === "string"
+        ? value.active_decision_record_id
+        : null,
+    facts: records("facts"),
+    assumptions: records("assumptions"),
+    unknowns: records("unknowns"),
+    user_commitments: records("user_commitments"),
+    pending_interrupt: nullableRecord("pending_interrupt"),
+    handoff_reason:
+      typeof value.handoff_reason === "string" ? value.handoff_reason : null,
+    review_trigger: nullableRecord("review_trigger"),
+  };
+}
+
 function isMessage(value: unknown): value is Message {
   return (
     isRecord(value) &&
@@ -183,6 +255,7 @@ export function parseCounselState(value: unknown): CounselState {
   const historicalPatterns = readRecordArray(value.historical_patterns);
   const error = readString(value.error);
   const artifactVersions = readRecordArray(value.artifact_versions);
+  const counselSession = readCounselSession(value.counsel_session);
 
   return {
     messages,
@@ -205,6 +278,7 @@ export function parseCounselState(value: unknown): CounselState {
     ...(historicalPatterns ? { historical_patterns: historicalPatterns } : {}),
     ...(isRecord(value.artifact) ? { artifact: value.artifact } : {}),
     ...(artifactVersions ? { artifact_versions: artifactVersions } : {}),
+    ...(counselSession ? { counsel_session: counselSession } : {}),
     ...(error ? { error } : {}),
   };
 }

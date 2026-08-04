@@ -1,7 +1,13 @@
 import type { CounselRecord } from "./counsel-state";
 
 export type CounselArtifactType =
-  "next_action" | "decision" | "research" | "diagnosis";
+  | "next_action"
+  | "decision"
+  | "research"
+  | "diagnosis"
+  | "research_report"
+  | "thinking_coach"
+  | "historical_reflection";
 export type CounselArtifactStatus = "draft" | "final" | "superseded";
 
 export interface CounselArtifactView {
@@ -10,6 +16,7 @@ export interface CounselArtifactView {
   changeReason?: string;
   confidence: number;
   counsel: CounselRecord;
+  protocolV2?: CounselRecord;
   currentStage: string;
   deferItems: string[];
   evidence: CounselRecord[];
@@ -20,6 +27,10 @@ export interface CounselArtifactView {
   status: CounselArtifactStatus;
   title: string;
   version: number;
+  sourceSkill?: string;
+  sourceVersion?: string;
+  supersedes: string[];
+  supersededBy: string[];
 }
 
 export type CounselArtifactParseResult =
@@ -110,7 +121,7 @@ function normalizeCounsel(
       deferItems: [],
     };
   }
-  if (artifactType === "research") {
+  if (artifactType === "research" || artifactType === "research_report") {
     const recommendation = text(counsel, "recommendation");
     if (!recommendation) return undefined;
     return {
@@ -122,15 +133,22 @@ function normalizeCounsel(
       deferItems: [],
     };
   }
-  const recommendation = text(counsel, "suggested_rule");
+  const recommendation =
+    text(counsel, "suggested_rule") ??
+    text(counsel, "recommendation_reason") ??
+    text(counsel, "summary");
   if (!recommendation) return undefined;
   return {
     mainContradiction,
     recommendation,
     confidence: parsedConfidence,
     changeConditions,
-    currentStage: "形成诊断建议",
-    deferItems: strings(counsel, "limitations") ?? [],
+    currentStage:
+      artifactType === "thinking_coach" ? "形成训练反馈" : "形成诊断建议",
+    deferItems:
+      strings(counsel, "limitations") ??
+      strings(counsel, "deferred_items") ??
+      [],
   };
 }
 
@@ -146,7 +164,10 @@ export function parseCounselArtifact(
     (artifactType !== "next_action" &&
       artifactType !== "decision" &&
       artifactType !== "research" &&
-      artifactType !== "diagnosis") ||
+      artifactType !== "diagnosis" &&
+      artifactType !== "research_report" &&
+      artifactType !== "thinking_coach" &&
+      artifactType !== "historical_reflection") ||
     (status !== "draft" && status !== "final" && status !== "superseded") ||
     !title ||
     typeof version !== "number" ||
@@ -175,11 +196,22 @@ export function parseCounselArtifact(
       title,
       version,
       counsel: value.tabs.counsel,
+      ...(isRecord(value.tabs.counsel.protocol_v2)
+        ? { protocolV2: value.tabs.counsel.protocol_v2 }
+        : {}),
       evidence,
       history,
       ...(process ? { process } : {}),
       ...(changeReason ? { changeReason } : {}),
       ...normalized,
+      ...(typeof value.source_skill === "string"
+        ? { sourceSkill: value.source_skill }
+        : {}),
+      ...(typeof value.source_version === "string"
+        ? { sourceVersion: value.source_version }
+        : {}),
+      supersedes: strings(value, "supersedes") ?? [],
+      supersededBy: strings(value, "superseded_by") ?? [],
     },
   };
 }

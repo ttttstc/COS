@@ -22,6 +22,7 @@ from lyl_agent.artifacts import (
     build_draft_artifact,
     finalize_artifact,
 )
+from lyl_agent.contracts import CounselSession, artifact_ref, core_mode_for_legacy
 from lyl_agent.models import create_chat_model
 from lyl_agent.memory import MemoryRepository
 from lyl_agent.reasoning import (
@@ -88,6 +89,11 @@ def _reset_per_turn_fields() -> dict[str, object]:
         "main_risk": None,
         "guardrail": None,
         "recovery": None,
+        "not_doing_cost": None,
+        "resource_cost": None,
+        "side_effects": [],
+        "recovery_path": None,
+        "preserves_optionality": True,
         "observe": [],
         "review_when": None,
         "confidence_basis": None,
@@ -274,6 +280,27 @@ async def mode_router(
         "scope": infer_scope(question, context.get("scope")),
         "request_scope": infer_scope(question, context.get("scope")),
     }
+    session = state.get("counsel_session")
+    previous_modes: list[str] = []
+    if isinstance(session, dict):
+        previous = session.get("previous_modes")
+        if isinstance(previous, list):
+            previous_modes = [item for item in previous if isinstance(item, str)]
+        previous_active = session.get("active_mode")
+        if isinstance(previous_active, str) and previous_active not in previous_modes:
+            previous_modes.append(previous_active)
+    core_mode = core_mode_for_legacy(mode)
+    issue_id = str(context.get("thread_id") or state.get("thread_id") or "local-issue")
+    updates["counsel_session"] = CounselSession(
+        issue_id=issue_id,
+        subject=question or "当前议题",
+        user_intent=question,
+        active_mode=core_mode,
+        previous_modes=[item for item in previous_modes if item != core_mode],
+        current_stage="mode_router",
+        status="active",
+        active_decision_record_id=state.get("decision_record_id"),
+    ).model_dump(mode="json")
     value_tradeoffs = context.get("value_tradeoffs")
     if isinstance(value_tradeoffs, list) and all(
         isinstance(item, str) for item in value_tradeoffs
@@ -423,6 +450,26 @@ async def problem_reframe(state: CounselState) -> CounselState:
             option.model_dump(mode="json")
             for option in default_decision_options(question)
         ]
+    session = state.get("counsel_session")
+    if isinstance(session, dict):
+        def session_items(value: object) -> list[dict[str, object]]:
+            return [
+                {"content": item}
+                for item in value
+                if isinstance(item, str)
+            ] if isinstance(value, list) else []
+
+        session_data = {
+            **session,
+            "subject": question or session.get("subject", "当前议题"),
+            "user_intent": question,
+            "desired_outcome": updates.get("desired_state") or session.get("desired_outcome", ""),
+            "current_stage": "problem_reframe",
+            "facts": session_items(updates.get("confirmed_facts", [])),
+            "assumptions": session_items(updates.get("assumptions", state.get("assumptions", []))),
+            "unknowns": session_items(updates.get("unresolved_unknowns", [])),
+        }
+        updates["counsel_session"] = CounselSession.model_validate(session_data).model_dump(mode="json")
     return _append_stage(state, "problem_reframe", "已判断问题复杂度", **updates)
 
 
@@ -702,7 +749,10 @@ async def synthesize_counsel(
         reasoning_updates, display_text = {}, normalize_summary(payload, response_text)
     enriched_state = cast(CounselState, {**state, **reasoning_updates})
     final, versions = finalize_artifact(enriched_state, display_text)
-    summary = artifact_summary(final)
+    # Modes without a dedicated Skill card still need their real model answer
+    # to remain the recommendation summary (rather than the generic card
+    # fallback used while those cards are being designed).
+    summary = display_text if mode not in {"ask", "decide"} else artifact_summary(final)
     card = final.tabs.counsel
     # Keep provider-specific JSON out of the persisted chat transcript. The
     # artifact retains the normalized structured fields for the UI.
@@ -721,6 +771,21 @@ async def synthesize_counsel(
         "artifact_versions": versions,
         "decision_snapshot": final.decision_snapshot,
     }
+    session = state.get("counsel_session")
+    if isinstance(session, dict):
+        stage_updates["counsel_session"] = CounselSession.model_validate(
+            {
+                **session,
+                "current_stage": "synthesize_counsel",
+                "status": "ready",
+                "active_artifact_id": artifact_ref(final.artifact_type, final.version),
+                "active_decision_record_id": state.get("decision_record_id"),
+                "review_trigger": {
+                    "reconsider_when": card.reconsider_when,
+                    "review_when": state.get("review_when"),
+                },
+            }
+        ).model_dump(mode="json")
     return _append_stage(
         enriched_state,
         "synthesize_counsel",
