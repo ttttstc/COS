@@ -319,6 +319,14 @@
   transform: translateX(-50%);
 }
 
+.cos-thread-scroll-bottom:hover:not(:disabled) {
+  transform: translateX(-50%) translateY(-1px);
+}
+
+.cos-thread-scroll-bottom:active:not(:disabled) {
+  transform: translateX(-50%) scale(0.98);
+}
+
 .cos-thread-welcome {
   display: grid;
   min-height: 100%;

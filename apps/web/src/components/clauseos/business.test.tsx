@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { IssueTopbar, StageProgress } from "./business";
+import { IssueComposer, IssueTopbar, StageProgress } from "./business";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -46,5 +47,29 @@ describe("IssueTopbar", () => {
       expect.stringContaining("same key"),
       expect.anything(),
     );
+  });
+});
+
+describe("IssueComposer", () => {
+  it("keeps the draft editable while submission is temporarily blocked", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+
+    render(
+      <IssueComposer
+        value=""
+        onChange={onChange}
+        onSubmit={vi.fn()}
+        submitDisabled
+        canSubmit
+      />,
+    );
+
+    const input = screen.getByRole("textbox", { name: "议题输入" });
+    expect(input).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "发送议题" })).toBeDisabled();
+
+    await user.type(input, "补充说明");
+    expect(onChange).toHaveBeenCalled();
   });
 });

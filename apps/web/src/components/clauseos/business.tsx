@@ -365,6 +365,7 @@ export interface IssueComposerProps {
   placeholder?: string;
   sendSlot?: ReactNode;
   statusSlot?: ReactNode;
+  submitDisabled?: boolean;
   stopSlot?: ReactNode;
   streaming?: boolean;
   value: string;
@@ -388,6 +389,7 @@ export function IssueComposer({
   placeholder = getCounselMode(mode).placeholder,
   sendSlot,
   statusSlot,
+  submitDisabled = false,
   stopSlot,
   streaming = false,
   value,
@@ -397,7 +399,7 @@ export function IssueComposer({
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (disabled || streaming || !submitEnabled) return;
+    if (disabled || submitDisabled || streaming || !submitEnabled) return;
     onSubmit();
   };
 
@@ -406,7 +408,7 @@ export function IssueComposer({
       type="submit"
       variant="primary"
       label="发送议题"
-      disabled={disabled || !submitEnabled}
+      disabled={disabled || submitDisabled || !submitEnabled}
     >
       <LYL_ICON_MAP.send
         size={18}
